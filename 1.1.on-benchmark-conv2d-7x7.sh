@@ -1,0 +1,2 @@
+./Scripts/benchmark.py 224 3 1 7 32 2 --parties 2 --output_folder "$MP_SPDZ_BENCHMARKS/benchmarks-7x7-2on-emul0$BENCHMARK_DELAY" --approaches "[('base','online'),('conv2d','online'),('matmul','online')]" --repeats 2
+./Scripts/benchmark.py 224 3 1 7 32 2 --parties 4 --output_folder "$MP_SPDZ_BENCHMARKS/benchmarks-7x7-4on-emul0$BENCHMARK_DELAY" --approaches "[('base','online'),('conv2d','online'),('matmul','online')]" --repeats 2

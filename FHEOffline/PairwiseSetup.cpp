@@ -68,6 +68,7 @@ void secure_init(T& setup, Player& P, U& machine,
     assert(sec >= 0);
     machine.sec = sec;
     params.set_min_sec(sec);
+    params.set_matrix_dim(OnlineOptions::singleton.matrix_dimensions);
     string filename = PREP_DIR + T::name() + "-"
             + to_string(plaintext_length) + "-" + to_string(sec) + "-"
             + to_string(params.secp()) + "-"

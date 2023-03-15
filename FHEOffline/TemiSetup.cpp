@@ -7,6 +7,7 @@
 #include "PairwiseSetup.h"
 #include "FHE/NTL-Subs.h"
 #include "Protocols/HemiOptions.h"
+#include "Protocols/MAC_Check.h"
 
 template<class FD>
 TemiSetup<FD>::TemiSetup()

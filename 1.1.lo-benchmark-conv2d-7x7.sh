@@ -1,0 +1,1 @@
+./Scripts/benchmark.py 224 3 1 7 32 2 --parties 2 --output_folder "$MP_SPDZ_BENCHMARKS/benchmarks-7x7-2lo-emul0$BENCHMARK_DELAY" --approaches "[('base','lowgear'),('conv2d','lowgear'),('conv2d','lowgear-direct')]" --repeats 2

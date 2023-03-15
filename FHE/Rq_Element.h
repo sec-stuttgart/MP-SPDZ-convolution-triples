@@ -45,6 +45,7 @@ protected:
   void assign_zero(); 
   void assign_one(); 
   void partial_assign(const Rq_Element& e);
+  void allocate();
 
   // Must be careful not to call by mistake
   Rq_Element(RepType r0=evaluation,RepType r1=polynomial) :

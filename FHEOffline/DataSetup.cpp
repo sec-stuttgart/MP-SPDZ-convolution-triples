@@ -41,6 +41,7 @@ void PartSetup<FD>::generate_setup(int n_parties, int plaintext_length, int sec,
     int slack, bool round_up)
 {
   params.set_min_sec(sec);
+  params.set_matrix_dim(OnlineOptions::singleton.matrix_dimensions);
   Parameters(n_parties, plaintext_length, sec, slack, round_up).generate_setup(
       params, FieldD);
   pk = FHE_PK(params, FieldD.get_prime());

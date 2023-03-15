@@ -17,7 +17,7 @@ public:
 
     MascotParams params;
 
-    OTPrep<T>(SubProcessor<T>* proc, DataPositions& usage);
+    OTPrep(SubProcessor<T>* proc, DataPositions& usage);
     ~OTPrep();
 
     void set_protocol(typename T::Protocol& protocol);
@@ -115,7 +115,7 @@ template<class T>
 class MascotFieldPrep : public virtual MascotPrep<T>
 {
 public:
-    MascotFieldPrep<T>(SubProcessor<T>* proc, DataPositions& usage) :
+    MascotFieldPrep(SubProcessor<T>* proc, DataPositions& usage) :
             BufferPrep<T>(usage),
             BitPrep<T>(proc, usage), RingPrep<T>(proc, usage),
             MaliciousDabitOnlyPrep<T>(proc, usage),

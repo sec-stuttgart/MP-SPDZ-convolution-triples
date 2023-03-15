@@ -118,8 +118,8 @@ public:
     void assign_zero();
     void assign_one();
 
-    bool is_zero();
-    bool is_one();
+    bool is_zero() const;
+    bool is_one() const;
     bool is_bit();
 
     modp_type get() const;

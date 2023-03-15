@@ -1,0 +1,19 @@
+import ml
+
+ml.FixConv2d.use_conv2ds = True
+
+layers = [
+    ml.FixConv2d([1, 224, 224, 3], (64, 7, 7, 3), (64,), [1, 112, 112, 64], (2, 2), 'SAME'),
+    # ml.MaxPool([1, 112, 112, 64]),
+]
+
+layers[0].debug_output = True
+opt = ml.Optimizer()
+opt.layers = layers
+for layer in layers:
+    layer.input_from(0)
+layers[0].X.input_from(1)
+start_timer(1)
+opt.forward(1)
+stop_timer(1)
+print_ln('guess %s', layers[-1].Y[0].reveal_nested())

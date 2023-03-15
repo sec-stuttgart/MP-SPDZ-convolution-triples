@@ -2,6 +2,7 @@
  * AddableVector.cpp
  *
  */
+#pragma once
 
 #include "AddableVector.h"
 #include "Rq_Element.h"

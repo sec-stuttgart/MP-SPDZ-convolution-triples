@@ -7,6 +7,8 @@
 #define PROTOCOLS_CHAIGEARPREP_H_
 
 #include "FHEOffline/SimpleGenerator.h"
+#include "FHEOffline/MatmulProducer.h"
+#include "FHEOffline/Conv2dProducer.h"
 
 /**
  * HighGear/ChaiGear preprocessing
@@ -24,6 +26,8 @@ class ChaiGearPrep : public MaliciousRingPrep<T>
     Generator* generator;
     SquareProducer<FD>* square_producer;
     InputProducer<FD>* input_producer;
+    std::unique_ptr<BaseConv2dTripleProducer<FD>> conv2d_producer;
+    std::unique_ptr<BaseMatmulTripleProducer<FD>> matmul_producer;
 
     Generator& get_generator();
 
@@ -51,6 +55,9 @@ public:
     void buffer_squares();
     void buffer_bits();
     void buffer_inputs(int player);
+    void buffer_matmul_triples(matmul_dimensions dimensions) override;
+    void buffer_conv2d_triples(convolution_dimensions dimensions) override;
+    void buffer_conv2d_triples(depthwise_convolution_triple_dimensions dimensions) override;
 };
 
 #endif /* PROTOCOLS_CHAIGEARPREP_H_ */

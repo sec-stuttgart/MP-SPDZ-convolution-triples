@@ -27,8 +27,10 @@ protected:
     vector<T> shares;
     vector<typename T::open_type> opened;
     vector<array<T, 3>> triples;
+    vector<array<vector<T>, 3>> vtriples;
     typename vector<typename T::open_type>::iterator it;
     typename vector<array<T, 3>>::iterator triple;
+    typename vector<array<vector<T>, 3>>::iterator vtriple;
     Preprocessing<T>* prep;
     typename T::MAC_Check* MC;
 
@@ -47,6 +49,16 @@ public:
     void prepare_mul(const T& x, const T& y, int n = -1);
     void exchange();
     T finalize_mul(int n = -1);
+
+    void init_matmul() { init_mul(); }
+    void prepare_matmul(std::span<T const> registers, matmul_desc matmul);
+    void finalize_matmul(std::span<T> registers, matmul_desc matmul);
+
+    void init_conv2d() { init_mul(); }
+    template<typename ConvoltionDesc>
+    void prepare_conv2d(std::span<T const> registers, ConvoltionDesc conv);
+    void finalize_conv2d(std::span<T> registers, convolution_desc conv);
+    void finalize_conv2d(std::span<T> registers, depthwise_convolution_desc conv);
 
     void check();
 

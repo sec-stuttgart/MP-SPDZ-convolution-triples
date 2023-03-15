@@ -1,6 +1,7 @@
 
 #include "Math/gf2n.h"
 #include "Math/Bit.h"
+#include "Math/fixint.h"
 
 #include "Tools/intrinsics.h"
 #include "Tools/Exceptions.h"
@@ -494,6 +495,11 @@ void gf2n_<U>::input(istream& s,bool human)
 gf2n_short gf2n_short::cut(int128 x)
 {
   return x.get_lower();
+}
+
+gf2n_short::gf2n_short(fixint<0> const& other)
+ : super(other.get_limb(0))
+{
 }
 
 gf2n_short::gf2n_short(const int128& a)

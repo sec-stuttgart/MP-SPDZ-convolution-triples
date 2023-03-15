@@ -189,6 +189,51 @@ void BufferPrep<T>::get_three_no_count(Dtype dtype, T& a, T& b, T& c)
 }
 
 template<class T>
+array<vector<T>, 3> BufferPrep<T>::get_matmul_triple_no_count(matmul_dimensions dimensions)
+{
+    auto& triples = matmul_triples[dimensions];
+    if (triples.empty())
+    {
+        buffer_matmul_triples(dimensions);
+        assert(not triples.empty());
+    }
+
+    auto triple = triples.back();
+    triples.pop_back();
+    return triple;
+}
+
+template<class T>
+array<vector<T>, 3> BufferPrep<T>::get_conv2d_triple_no_count(convolution_dimensions dimensions)
+{
+    auto& triples = convolution_triples[dimensions];
+    if (triples.empty())
+    {
+        buffer_conv2d_triples(dimensions);
+        assert(not triples.empty());
+    }
+
+    auto triple = triples.back();
+    triples.pop_back();
+    return triple;
+}
+
+template<class T>
+array<vector<T>, 3> BufferPrep<T>::get_conv2d_triple_no_count(depthwise_convolution_triple_dimensions dimensions)
+{
+    auto& triples = depthwise_convolution_triples[dimensions];
+    if (triples.empty())
+    {
+        buffer_conv2d_triples(dimensions);
+        assert(not triples.empty());
+    }
+
+    auto triple = triples.back();
+    triples.pop_back();
+    return triple;
+}
+
+template<class T>
 void BitPrep<T>::buffer_squares()
 {
     auto proc = this->proc;

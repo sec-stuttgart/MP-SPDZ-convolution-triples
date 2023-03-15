@@ -26,6 +26,9 @@ FHE_SK& FHE_SK::operator+=(const FHE_SK& c)
   if (a.params!=c.params) { throw params_mismatch(); }
 
   ::add(a.sk,b.sk,c.sk);
+#ifdef CONV2D_LOWGEAR_EXPANDED_BGV
+  poly_sk += c.poly_sk;
+#endif
 
   return *this;
 }
@@ -214,6 +217,30 @@ void FHE_SK::decrypt(Plaintext<T,FD,S>& mess,const Ciphertext& c) const
   Rq_Element ans = quasi_decrypt(c);
   mess.set_poly_mod(ans.get_iterator(), ans.get_modulus());
 }
+
+template<class T, class FD, class S>
+void FHE_SK::decrypt(Plaintext<T,FD,S>& mess, ExpandedCiphertext const& c) const
+{
+#ifdef CONV2D_LOWGEAR_EXPANDED_BGV
+  if (T::characteristic_two ^ (pr == 2))
+    throw pr_mismatch();
+  if (c.get_params() != *params)
+    throw params_mismatch();
+
+  CONV2D_ASSERT(sk.n_mults() == 0);
+  CONV2D_ASSERT(poly_sk.get_rep() == polynomial);
+
+  Ring_Element ans = c.c0();
+  CONV2D_ASSERT(ans.get_rep() == polynomial);
+  ans -= c.c1() * poly_sk;
+  mess.set_poly_mod(ans.get_iterator(), ans.get_prime());
+#else
+  (void)mess;
+  (void)c;
+  throw not_implemented();
+#endif
+}
+
 
 Rq_Element FHE_SK::quasi_decrypt(const Ciphertext& c) const
 {
@@ -419,6 +446,9 @@ template Ciphertext FHE_PK::encrypt(const Plaintext_<P2Data>& mess) const;
 
 template void FHE_SK::decrypt(Plaintext_<FFT_Data>&, const Ciphertext& c) const;
 template void FHE_SK::decrypt(Plaintext_<P2Data>&, const Ciphertext& c) const;
+
+template void FHE_SK::decrypt(Plaintext_<FFT_Data>&, ExpandedCiphertext const& c) const;
+template void FHE_SK::decrypt(Plaintext_<P2Data>&, ExpandedCiphertext const& c) const;
 
 template Plaintext_<FFT_Data> FHE_SK::decrypt(const Ciphertext& c,
         const FFT_Data& FieldD);

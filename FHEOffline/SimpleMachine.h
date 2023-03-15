@@ -9,8 +9,9 @@
 #include "FHE/FHE_Keys.h"
 #include "FHEOffline/DataSetup.h"
 #include "Networking/Player.h"
-#include "FHEOffline/SimpleGenerator.h"
 #include "Tools/OfflineMachineBase.h"
+
+class GeneratorBase;
 
 class MachineBase : public OfflineMachineBase
 {

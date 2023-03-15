@@ -39,6 +39,9 @@ public:
     virtual void get(T& a) = 0;
 };
 
+template<class T>
+class VectorTripleSacriFactory : public TripleSacriFactory<vector<T>> {};
+
 template <class T>
 void Triple_Checking(const Player& P, MAC_Check<T>& MC, int nm,
         int output_thread, TripleSacriFactory<Share<T> >& factory,

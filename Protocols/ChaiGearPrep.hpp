@@ -193,3 +193,39 @@ void ChaiGearPrep<T>::buffer_bits(true_type)
     for (auto& bit : this->bits)
         bit.force_to_bit();
 }
+
+template<class T>
+void ChaiGearPrep<T>::buffer_matmul_triples(matmul_dimensions dimensions)
+{
+    auto& generator = get_generator();
+    auto& setup = machine->setup.part<FD>();
+    MAC_Check<typename FD::T> MC(this->proc->MC.get_alphai());
+    if (not matmul_producer)
+        matmul_producer = std::make_unique<SummingMatmulTripleProducer<FD>>(this->proc->P, setup.pk, *machine, setup.FieldD, this->proc->P.my_num());
+    matmul_producer->produce(dimensions, this->proc->P, MC, setup.pk, setup.calpha, generator.EC, generator.dd, setup.alphai);
+    matmul_producer->transfer_triples(this->matmul_triples[dimensions]);
+}
+
+template<class T>
+void ChaiGearPrep<T>::buffer_conv2d_triples(convolution_dimensions dimensions)
+{
+    auto& generator = get_generator();
+    auto& setup = machine->setup.part<FD>();
+    MAC_Check<typename FD::T> MC(this->proc->MC.get_alphai());
+    if (not conv2d_producer)
+        conv2d_producer = std::make_unique<SummingConv2dTripleProducer<FD>>(this->proc->P, setup.pk, *machine, setup.FieldD, this->proc->P.my_num());
+    conv2d_producer->produce(dimensions, this->proc->P, MC, setup.pk, setup.calpha, generator.EC, generator.dd, setup.alphai);
+    conv2d_producer->transfer_triples(this->convolution_triples[dimensions]);
+}
+
+template<class T>
+void ChaiGearPrep<T>::buffer_conv2d_triples(depthwise_convolution_triple_dimensions dimensions)
+{
+    auto& generator = get_generator();
+    auto& setup = machine->setup.part<FD>();
+    MAC_Check<typename FD::T> MC(this->proc->MC.get_alphai());
+    if (not conv2d_producer)
+        conv2d_producer = std::make_unique<SummingConv2dTripleProducer<FD>>(this->proc->P, setup.pk, *machine, setup.FieldD, this->proc->P.my_num());
+    conv2d_producer->produce(dimensions, this->proc->P, MC, setup.pk, setup.calpha, generator.EC, generator.dd, setup.alphai);
+    conv2d_producer->transfer_triples(this->depthwise_convolution_triples[dimensions]);
+}

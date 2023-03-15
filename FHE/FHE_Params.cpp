@@ -11,7 +11,7 @@ FHE_Params::FHE_Params(int n_mults, int drown_sec) :
 {
 }
 
-void FHE_Params::set(const Ring& R,
+void FHE_Params::set(const Ring& R, const bigint& prime,
                      const vector<bigint>& primes)
 {
   if (primes.size() != FFTData.size())
@@ -19,6 +19,8 @@ void FHE_Params::set(const Ring& R,
 
   for (size_t i = 0; i < FFTData.size(); i++)
     FFTData[i].init(R,primes[i]);
+
+  fd.init(R, prime);
 
   set_sec(sec_p);
 }

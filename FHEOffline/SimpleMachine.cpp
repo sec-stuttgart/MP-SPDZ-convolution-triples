@@ -7,6 +7,7 @@
 #include <FHEOffline/SimpleMachine.h>
 #include "FHEOffline/Producer.h"
 #include "FHEOffline/Sacrificing.h"
+#include "FHEOffline/SimpleGenerator.h"
 #include "FHE/FHE_Keys.h"
 #include "Tools/time-func.h"
 #include "Tools/ezOptionParser.h"

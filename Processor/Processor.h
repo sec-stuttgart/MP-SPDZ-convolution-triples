@@ -22,6 +22,8 @@
 #include "GC/ShareThread.h"
 #include "Protocols/SecureShuffle.h"
 
+#include "Tools/matmul.h"
+
 class Program;
 
 template <class T>
@@ -72,6 +74,8 @@ public:
   void matmulsm(const CheckVector<T>& source, const Instruction& instruction, size_t a,
       size_t b);
   void conv2ds(const Instruction& instruction);
+  void vmatmuls(matmul_desc_range matmuls);
+  void vconv2ds(convolution_desc_range convs);
 
   void secure_shuffle(const Instruction& instruction);
   size_t generate_secure_shuffle(const Instruction& instruction);

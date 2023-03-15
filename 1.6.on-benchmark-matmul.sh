@@ -1,0 +1,1 @@
+./Scripts/benchmark.py 128 [1,196,125,64,72,144,288,432,576,720] 1 --parties 2 --program benchmark_conv2matmul --output_folder "$MP_SPDZ_BENCHMARKS/benchmarks-matmul128x128-2on-emul0$BENCHMARK_DELAY" --approaches "[('matmul','online')]" --repeats 2

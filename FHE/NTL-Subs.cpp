@@ -139,12 +139,12 @@ int common_semi_setup(FHE_Params& params, int m, bigint p, int& lgp0, int lgp1, 
   if (params.n_mults() > 0)
   {
     generate_moduli(p0, p1, m, p, lgp0, lgp1);
-    params.set(R, {p0, p1});
+    params.set(R, p, {p0, p1});
   }
   else
   {
     generate_modulus(p0, m, p, lgp0);
-    params.set(R, {p0});
+    params.set(R, p, {p0});
   }
   return extra_slack;
 }

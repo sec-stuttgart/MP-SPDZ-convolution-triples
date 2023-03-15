@@ -35,6 +35,8 @@
 #include "Math/gfp.hpp"
 #include "GC/Secret.hpp"
 #include "Machines/ShamirMachine.hpp"
+#include "Tools/matmul.h"
+#include "Tools/conv2d.h"
 
 #include <sstream>
 #include <fstream>
@@ -76,6 +78,18 @@ public:
   void make_edabits(const typename T::mac_type&, int, int, bool, true_type)
   {
   }
+
+  template<class T>
+  void make_matmul_triples(const typename T::mac_type& key, int N, int ntrip, bool zero);
+  template<class T>
+  void make_matmul_triples(const typename T::mac_type& key, int N, int ntrip, bool zero, matmul_dimensions dimensions);
+
+  template<class T>
+  void make_conv2d_triples(const typename T::mac_type& key, int N, int ntrip, bool zero);
+  template<class T>
+  void make_conv2d_triples(const typename T::mac_type& key, int N, int ntrip, bool zero, convolution_dimensions dimensions);
+  template<class T>
+  void make_conv2d_triples(const typename T::mac_type& key, int N, int ntrip, bool zero, depthwise_convolution_triple_dimensions dimensions);
 };
 
 
@@ -381,6 +395,263 @@ void FakeParams::make_with_mac_key(int nplayers, int default_num, bool zero)
 template<class T>
 int generate(ez::ezOptionParser& opt);
 
+template<class T>
+void FakeParams::make_conv2d_triples(const typename T::mac_type& key, int N, int ntrip, bool zero)
+{
+  std::vector<int> args;
+  opt.get("-conv")->getInts(args);
+
+  assert(args.size() % CONVOLUTION_DIMENSIONS_FIELDS == 0);
+
+  for (unsigned int i = 0; i < args.size(); i += CONVOLUTION_DIMENSIONS_FIELDS)
+  {
+    convolution_dimensions dimensions;
+    std::memcpy(static_cast<void*>(std::addressof(dimensions)), args.data() + i, CONVOLUTION_DIMENSIONS_FIELDS * sizeof(int));
+    if (dimensions.is_depthwise())
+    {
+      make_conv2d_triples<T>(key, N, ntrip * dimensions.image_depth, zero, dimensions.as_depthwise());
+    }
+    else
+    {
+      make_conv2d_triples<T>(key, N, ntrip, zero, dimensions);
+    }
+  }
+}
+
+template<class T>
+void FakeParams::make_conv2d_triples(const typename T::mac_type& key, int N, int ntrip, bool zero, convolution_dimensions dimensions)
+{
+  T::clear::write_setup(get_prep_sub_dir<T>(prep_data_prefix, N));
+
+  auto image_size = dimensions.image_size();
+  auto filter_size = dimensions.filter_size();
+  auto output_size = dimensions.full_output_size();
+  auto H = dimensions.full_output_height();
+  auto W = dimensions.full_output_width();
+
+  PRNG G;
+  G.ReSeed();
+
+  auto dir = get_conv2d_file_prefix(get_prep_sub_dir<T>(prep_data_prefix, N), dimensions, T::type_short());
+  Files<T> files(N, key, dir);
+  using clear = typename T::clear;
+  /* Generate Triples */
+  for (int i=0; i<ntrip; i++)
+  {
+    std::vector<clear> image(image_size);
+    if (!zero)
+    {
+      for (auto& x : image)
+      {
+        x.randomize(G);
+      }
+    }
+
+    std::vector<clear> filter(filter_size);
+    if (!zero)
+    {
+      for (auto& x : filter)
+      {
+        x.randomize(G);
+      }
+    }
+    std::vector<clear> output(output_size);
+    for (int b = 0; b < dimensions.image_batch; ++b)
+    {
+        for (int y = 0; y < H; ++y)
+        {
+            for (int x = 0; x < W; ++x)
+            {
+                for (int c = 0; c < dimensions.output_depth; ++c)
+                {
+                    int image_y = y - dimensions.filter_height + 1;
+                    int image_x = x - dimensions.filter_width + 1;
+
+                    auto output_index = nDaccess({b, dimensions.image_batch}, {y, H}, {x, W}, {c, dimensions.output_depth});
+                    auto& value = output[output_index];
+                    for (int sample_y = std::max(0, image_y); sample_y < std::min(image_y + dimensions.filter_height, dimensions.image_height); ++sample_y)
+                    {
+                        int filter_y = sample_y - image_y;
+                        
+                        for (int sample_x = std::max(0, image_x); sample_x < std::min(image_x + dimensions.filter_width, dimensions.image_width); ++sample_x)
+                        {
+                            int filter_x = sample_x - image_x;
+
+                            for (int dc = 0; dc < dimensions.image_depth; ++dc)
+                            {
+                                auto image_index = nDaccess({b, dimensions.image_batch}, {sample_y, dimensions.image_height}, {sample_x, dimensions.image_width}, {dc, dimensions.image_depth});
+                                auto filter_index = nDaccess({c, dimensions.output_depth}, {filter_y, dimensions.filter_height}, {filter_x, dimensions.filter_width}, {dc, dimensions.image_depth});
+                                
+                                value += image[image_index] * filter[filter_index];
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    for (auto& x : image)
+      files.output_shares(x);
+    for (auto& x : filter)
+      files.output_shares(x);
+    for (auto& x : output)
+      files.output_shares(x);
+  }
+  check_files(files.outf, N);
+}
+
+template<class T>
+void FakeParams::make_conv2d_triples(const typename T::mac_type& key, int N, int ntrip, bool zero, depthwise_convolution_triple_dimensions dimensions)
+{
+  T::clear::write_setup(get_prep_sub_dir<T>(prep_data_prefix, N));
+
+  auto image_size = dimensions.image_size();
+  auto filter_size = dimensions.filter_size();
+  auto output_size = dimensions.full_output_size();
+  auto H = dimensions.full_output_height();
+  auto W = dimensions.full_output_width();
+
+  PRNG G;
+  G.ReSeed();
+
+  auto dir = get_conv2d_file_prefix(get_prep_sub_dir<T>(prep_data_prefix, N), dimensions, T::type_short());
+  Files<T> files(N, key, dir);
+  using clear = typename T::clear;
+  /* Generate Triples */
+  for (int i=0; i<ntrip; i++)
+  {
+    std::vector<clear> image(image_size);
+    if (!zero)
+    {
+      for (auto& x : image)
+      {
+        x.randomize(G);
+      }
+    }
+
+    std::vector<clear> filter(filter_size);
+    if (!zero)
+    {
+      for (auto& x : filter)
+      {
+        x.randomize(G);
+      }
+    }
+    std::vector<clear> output(output_size);
+    for (int b = 0; b < dimensions.image_batch; ++b)
+    {
+        for (int y = 0; y < H; ++y)
+        {
+            for (int x = 0; x < W; ++x)
+            {
+                int image_y = y - dimensions.filter_height + 1;
+                int image_x = x - dimensions.filter_width + 1;
+
+                auto output_index = nDaccess({b, dimensions.image_batch}, {y, H}, {x, W});
+                auto& value = output[output_index];
+                for (int sample_y = std::max(0, image_y); sample_y < std::min(image_y + dimensions.filter_height, dimensions.image_height); ++sample_y)
+                {
+                    int filter_y = sample_y - image_y;
+                    
+                    for (int sample_x = std::max(0, image_x); sample_x < std::min(image_x + dimensions.filter_width, dimensions.image_width); ++sample_x)
+                    {
+                        int filter_x = sample_x - image_x;
+
+                        auto image_index = nDaccess({b, dimensions.image_batch}, {sample_y, dimensions.image_height}, {sample_x, dimensions.image_width});
+                        auto filter_index = nDaccess({filter_y, dimensions.filter_height}, {filter_x, dimensions.filter_width});
+                        
+                        value += image[image_index] * filter[filter_index];
+                    }
+                }
+            }
+        }
+    }
+
+    for (auto& x : image)
+      files.output_shares(x);
+    for (auto& x : filter)
+      files.output_shares(x);
+    for (auto& x : output)
+      files.output_shares(x);
+  }
+  check_files(files.outf, N);
+}
+
+
+template<class T>
+void FakeParams::make_matmul_triples(const typename T::mac_type& key, int N, int ntrip, bool zero)
+{
+  std::vector<int> args;
+  opt.get("-matmul")->getInts(args);
+
+  assert(args.size() % MATMUL_DIMENSIONS_FIELDS == 0);
+
+  for (unsigned int i = 0; i < args.size(); i += MATMUL_DIMENSIONS_FIELDS)
+  {
+    matmul_dimensions dimensions;
+    std::memcpy(&dimensions, args.data() + i, MATMUL_DIMENSIONS_FIELDS * sizeof(int));
+    make_matmul_triples<T>(key, N, ntrip, zero, dimensions);
+  }
+}
+
+template<class T>
+void FakeParams::make_matmul_triples(const typename T::mac_type& key, int N, int ntrip, bool zero, matmul_dimensions dimensions)
+{
+  T::clear::write_setup(get_prep_sub_dir<T>(prep_data_prefix, N));
+
+  auto left_size = dimensions.left_size();
+  auto right_size = dimensions.right_size();
+  auto result_size = dimensions.result_size();
+
+  PRNG G;
+  G.ReSeed();
+
+  auto dir = get_matmul_file_prefix(get_prep_sub_dir<T>(prep_data_prefix, N), dimensions, T::type_short());
+  Files<T> files(N, key, dir);
+  using clear = typename T::clear;
+  /* Generate Triples */
+  for (int i=0; i<ntrip; i++)
+  {
+    std::vector<clear> left(left_size);
+    if (!zero)
+    {
+      for (auto& x : left)
+      {
+        x.randomize(G);
+      }
+    }
+
+    std::vector<clear> right(right_size);
+    if (!zero)
+    {
+      for (auto& x : right)
+      {
+        x.randomize(G);
+      }
+    }
+    std::vector<clear> result(result_size);
+    for (int i = 0; i < dimensions.left_outer_dimension; ++i)
+    {
+      for (int j = 0; j < dimensions.right_outer_dimension; ++j)
+      {
+        for (int k = 0; k < dimensions.inner_dimension; ++k)
+        {
+          result[nDaccess({i, dimensions.left_outer_dimension}, {j, dimensions.right_outer_dimension})] += left[nDaccess({i, dimensions.left_outer_dimension}, {k, dimensions.inner_dimension})] * right[nDaccess({k, dimensions.inner_dimension}, {j, dimensions.right_outer_dimension})];
+        }
+      }
+    }
+
+    for (auto& x : left)
+      files.output_shares(x);
+    for (auto& x : right)
+      files.output_shares(x);
+    for (auto& x : result)
+      files.output_shares(x);
+  }
+  check_files(files.outf, N);
+}
+
 int main(int argc, const char** argv)
 {
   insecure_fake();
@@ -526,6 +797,24 @@ int main(int argc, const char** argv)
         "edaBit lengths (separate by comma)", // Help description.
         "-e", // Flag token.
         "--edabits" // Flag token.
+  );
+  opt.add(
+        "", // Default.
+        0, // Required?
+        -1, // Number of args expected.
+        ',', // Delimiter if expecting multiple args.
+        "matrix dimensions (separate by comma)", // Help description.
+        "-matmul", // Flag token.
+        "--matrixmultiplications" // Flag token.
+  );
+  opt.add(
+        "", // Default.
+        0, // Required?
+        -1, // Number of args expected.
+        ',', // Delimiter if expecting multiple args.
+        "convolution dimensions (separate by comma)", // Help description.
+        "-conv", // Flag token.
+        "--convolutions" // Flag token.
   );
   opt.add(
         "", // Default.
@@ -767,6 +1056,9 @@ int FakeParams::generate()
       make_bits<GC::MaliciousCcdShare<gf2n_short>>({}, nplayers,
           default_num, zero);
     }
+
+  make_matmul_triples<T>(keyp, nplayers, default_num, zero);
+  make_conv2d_triples<T>(keyp, nplayers, default_num, zero);
 
   generate_field<typename T::clear>(T::clear::prime_field);
   generate_field<gf2n>(true_type());

@@ -215,6 +215,7 @@ template <int T>
 inline void Zp_Data::Mont_Mult_(mp_limb_t* z,const mp_limb_t* x,const mp_limb_t* y) const
 {
 #ifdef __BMI2__
+  assert(T <= MAX_MOD_SZ);
   mp_limb_t ans[2*MAX_MOD_SZ+1],u;
   inline_mpn_zero(ans + T + 1, T);
   // First loop

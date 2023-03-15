@@ -2394,6 +2394,268 @@ class conv2ds(base.DataInstruction):
         req_node.increment(('matmul', (1, args[7] * args[8] * args[11],
                                        args[14] * args[3] * args[4])), 1)
 
+class matmul_dimensions:
+    def __init__(self, left_outer_dimension, inner_dimension, right_outer_dimension):
+        self.left_outer_dimension = left_outer_dimension
+        self.inner_dimension = inner_dimension
+        self.right_outer_dimension = right_outer_dimension
+
+    def __str__(self):
+        return f"{{{self.left_outer_dimension}x{self.inner_dimension} matmul {self.inner_dimension}x{self.right_outer_dimension} -> {self.left_outer_dimension}x{self.right_outer_dimension}}}"
+
+    def _as_tuple(self):
+        return (self.left_outer_dimension, self.inner_dimension, self.right_outer_dimension)
+
+    def __lt__(self, other):
+        return self._as_tuple() < other._as_tuple()
+
+    def __eq__(self, other):
+        return self._as_tuple() == other._as_tuple()
+
+    def __hash__(self):
+        return hash(self._as_tuple())
+
+class matmul_desc:
+    def __init__(self, result, left, right, left_outer_dimension, inner_dimension, right_outer_dimension):
+        self.result = result
+        self.left = left
+        self.right = right
+        self.left_outer_dimension = left_outer_dimension
+        self.inner_dimension = inner_dimension
+        self.right_outer_dimension = right_outer_dimension
+
+    @property
+    def dimensions(self):
+        return matmul_dimensions(self.left_outer_dimension, self.inner_dimension, self.right_outer_dimension)
+
+class convolution_dimensions:
+    def __init__(self, image_shape, filter_shape):
+        assert len(image_shape) == 4
+        assert filter_shape[-1] == image_shape[-1]
+        assert len(filter_shape) in (3, 4)
+
+        self.image_shape = tuple(image_shape)
+        self.filter_shape = tuple(filter_shape)
+
+    @property
+    def depthwise(self):
+        return len(self.filter_shape) == 3
+
+    @property
+    def count(self):
+        if self.depthwise:
+            return self.image_shape[-1]
+        else:
+            return 1
+
+    def __str__(self):
+        if self.depthwise:
+            fh, fw, fc = self.filter_shape
+            oc = fc
+            depthwise = "depthwise "
+            image_shape = self.image_shape[:-1]
+            filter_shape = (fh, fw)
+        else:
+            fd, fh, fw, fc = self.filter_shape
+            oc = fd
+            depthwise = ""
+            image_shape = self.image_shape
+            filter_shape = self.filter_shape
+        output_shape = self.image_shape[0], self.image_shape[1] + fh - 1, self.image_shape[2] + fw - 1
+        if not depthwise:
+            output_shape = tuple([*output_shape, oc])
+        image_shape = "x".join(map(str, image_shape))
+        filter_shape = "x".join(map(str, filter_shape))
+        output_shape = "x".join(map(str, output_shape))
+        return f"{{{image_shape} {depthwise}conv2d {filter_shape} -> {output_shape}}}"
+
+    def _as_tuple(self):
+        return (self.image_shape, self.filter_shape)
+
+    def __lt__(self, other):
+        return self._as_tuple() < other._as_tuple()
+
+    def __eq__(self, other):
+        return self._as_tuple() == other._as_tuple()
+
+    def __hash__(self):
+        return hash(self._as_tuple())
+
+
+class convolution_desc:
+    def __init__(self, output, image, image_shape, filter, filter_shape, padding, stride=(1,1)):
+        assert len(image_shape) == 4
+        assert image.size == image_shape[0] * image_shape[1] * image_shape[2] * image_shape[3]
+        assert filter_shape[-1] == image_shape[-1]
+        if len(filter_shape) == 3:
+            depthwise = True
+            assert filter.size == filter_shape[0] * filter_shape[1] * filter_shape[2]
+        else:
+            depthwise = False
+            assert len(filter_shape) == 4
+            assert filter.size == filter_shape[0] * filter_shape[1] * filter_shape[2] * filter_shape[3]
+
+        assert len(padding) == 2
+        assert len(stride) == 2
+
+        b, h, w, c = image_shape
+        if depthwise:
+            fh, fw, fc = filter_shape
+            oc = fc
+        else:
+            fd, fh, fw, fc = filter_shape
+            oc = fd
+        assert c == fc
+        assert fh % 2 == 1
+        assert fw % 2 == 1
+        assert 0 <= padding[0] < fh
+        assert 0 <= padding[1] < fw
+        ob = b
+        valid_output_size = False
+        for i, j in itertools.product(range(2), repeat=2):
+            oh = (h + 2 * padding[0] + i - fh) // stride[0] + 1
+            ow = (w + 2 * padding[1] + j - fw) // stride[1] + 1
+
+            if output.size == ob * oh * ow * oc:
+                valid_output_size = True
+                break
+        assert valid_output_size, f"output size mismatch: {output.size} != {ob * oh * ow * oc} = {ob} * {oh} * {ow} * {oc}"
+        
+        self.output = output
+        self.output_shape = (ob, oh, ow, oc)
+        self.image = image
+        self.image_shape = tuple(image_shape)
+        self.filter = filter
+        self.filter_shape = tuple(filter_shape)
+        self.padding = tuple(padding)
+        self.stride = tuple(stride)
+
+    @property
+    def depthwise(self):
+        return len(self.filter_shape) == 3
+
+    @property
+    def filter_area(self):
+        if self.depthwise:
+            return self.filter_shape[0:2]
+        else:
+            return self.filter_shape[1:3]
+    
+    @property
+    def output_area(self):
+        return self.output_shape[1:3]
+
+    @property
+    def output_depth_or_depthwise(self):
+        if self.depthwise:
+            return -1
+        else:
+            return self.output_shape[-1]
+
+    @property
+    def dimensions(self):
+        return convolution_dimensions(self.image_shape, self.filter_shape)
+
+    def __str__(self):
+        depthwise = "depthwise " if self.depthwise else ""
+        image_shape = "x".join(map(str, self.image_shape))
+        filter_shape = "x".join(map(str, self.filter_shape))
+        output_shape = "x".join(map(str, self.output_shape))
+        return f"{{{image_shape} {depthwise}conv2d {filter_shape} -> {output_shape}, padding={self.padding}, stride={self.stride}}}"
+
+    def _as_tuple(self):
+        return (self.image_shape, self.filter_shape, self.padding, self.stride, self.split)
+
+    def __lt__(self, other):
+        return self._as_tuple() < other._as_tuple()
+
+    def __eq__(self, other):
+        return self._as_tuple() == other._as_tuple()
+
+    def __hash__(self):
+        return hash(self._as_tuple())
+
+
+class vmatmuls(base.VarArgsInstruction, base.DataInstruction):
+    """ Secret matrix multiplications."""
+    code = base.opcodes['VMATMULS']
+    data_type = 'vmatmul'
+    is_vec = lambda _: True
+
+    arg_format = tools.cycle(["sw", "s", "s", "int", "int", "int"])
+
+    def to_args(self, matmuls):
+        args = []
+        for matmul in matmuls:
+            args += [matmul.result, matmul.left, matmul.right, matmul.left_outer_dimension, matmul.inner_dimension, matmul.right_outer_dimension]
+        return args
+
+    def __init__(self, *matmuls, **kwargs):
+        self.matmuls = matmuls
+        self.args = self.to_args(matmuls, **kwargs)
+        
+        super(vmatmuls, self).__init__(*self.args, **kwargs)
+
+    def merge_id(self):
+        return type(self)
+
+    def merge(self, other):
+        self.args += other.args
+        self.matmuls += other.matmuls
+
+    def add_usage(self, req_node):
+        for matmul in self.matmuls:
+            req_node.increment((self.field_type, self.data_type, matmul.dimensions), 1)
+
+class vconv2ds(base.VarArgsInstruction, base.DataInstruction):
+    """ Secret 2D convolutions."""
+    code = base.opcodes['VCONV2DS']
+    data_type = 'vconv2d'
+    is_vec = lambda _: True
+
+    
+    arg_format = tools.cycle([
+        "sw", # output
+        "s", # image
+        "s", # filter
+        "int", # image batch
+        "int", # image height
+        "int", # image width
+        "int", # image depth
+        "int", # filter height
+        "int", # filter width
+        "int", # output height
+        "int", # output width
+        "int", # output depth
+        "int", # padding y
+        "int", # padding x
+        "int", # stride y
+        "int", # stride x
+        ])
+
+    def to_args(self, convolutions):
+        args = []
+        for convolution in convolutions:
+            args += [convolution.output, convolution.image, convolution.filter, *convolution.padding, *convolution.stride, *convolution.image_shape, *convolution.filter_area, *convolution.output_area, convolution.output_depth_or_depthwise]
+        return args
+
+    def __init__(self, *convolutions, **kwargs):
+        self.convolutions = convolutions
+        self.args = self.to_args(convolutions)
+
+        super(vconv2ds, self).__init__(*self.args, **kwargs)
+
+    def merge_id(self):
+        return type(self)
+
+    def merge(self, other):
+        self.args += other.args
+        self.convolutions += other.convolutions
+
+    def add_usage(self, req_node):
+        for convolution in self.convolutions:
+            req_node.increment((self.field_type, self.data_type, convolution.dimensions), convolution.dimensions.count)
+
 @base.vectorize
 class trunc_pr(base.VarArgsInstruction):
     """ Probabilistic truncation if supported by the protocol.

@@ -591,7 +591,7 @@ void InputProducer<FD>::run(const Player& P, const FHE_PK& pk,
             P.receive_player(j, ciphertexts);
             P.receive_player(j, cleartexts);
             C.resize(personal_EC.machine->sec, pk.get_params());
-            Verifier<FD>(personal_EC.proof, FieldD).NIZKPoK(C, ciphertexts,
+            Verifier<FD>(personal_EC.get_proof(), FieldD).NIZKPoK(personal_EC.get_proof(), C, ciphertexts,
                     cleartexts, pk);
         }
 
@@ -671,7 +671,6 @@ void InputProducer<FD>::clear_file(int my_num, int thread_num,
     (void)thread_num;
     (void)initial;
 }
-
 
 template class TripleProducer<gfp, FFT_Data, bigint>;
 template class TripleProducer<gf2n_short, P2Data, int>;

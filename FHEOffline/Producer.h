@@ -13,6 +13,14 @@
 #include "FHEOffline/Sacrificing.h"
 #include "Protocols/Share.h"
 #include "Math/Setup.h"
+#include "Protocols/mac_key.hpp"
+#include "FHE/P2Data.h"
+#include "FHE/FFT_Data.h"
+
+#include "FHEOffline/SimpleEncCommit.h"
+
+#include <memory>
+#include <optional>
 
 template <class T>
 string prep_filename(string type, int my_num, int thread_num,
@@ -252,6 +260,177 @@ public:
       bool clear);
   void clear_file(int my_num, int thread_num = 0, bool initial = 0);
 
+};
+
+template<typename Container, std::size_t Index>
+struct indexed_view_of
+{
+  Container& container;
+  decltype(auto) operator [](std::size_t i)
+  {
+    return container[i][Index];
+  }
+
+  std::size_t size() const
+    requires requires { container.size(); }
+  {
+    return container.size();
+  }
+};
+
+template<class FD>
+class BaseVectorTripleProducer : public Producer<FD>, public VectorTripleSacriFactory<Share<typename FD::T>>
+{
+public:
+  using T = typename FD::T;
+protected:
+  std::vector<std::array<std::vector<T>, 5>> presacrificing_shares;
+  std::vector<std::array<std::vector<T>, 5>> presacrificing_macs;
+
+  template<std::size_t I>
+  auto get_presacrificing_shares() { return indexed_view_of<decltype(presacrificing_shares), I>(presacrificing_shares); }
+  template<std::size_t I>
+  auto get_presacrificing_macs() { return indexed_view_of<decltype(presacrificing_macs), I>(presacrificing_macs); }
+
+public:
+  BaseVectorTripleProducer(int my_num, int output_thread = 0, bool write_output = true, string dir = PREP_DIR)
+    : Producer<FD>(output_thread, write_output)
+  {
+    this->dir = dir;
+    (void)my_num;
+  }
+
+  void clear()
+  { 
+    this->triples.clear();
+    // don't clear presacrificing_* as it is overwritten in clear_and_set_dimensions anyways
+  }
+  void get(vector<Share<T>>& a, vector<Share<T>>& b, vector<Share<T>>& c) override 
+  {
+    (void)a; (void)b; (void)c; 
+    throw std::runtime_error("get is not available for BaseVectorTripleProducer"); 
+  }
+
+  template<typename ShareT>
+  void transfer_triples(std::vector<std::array<std::vector<ShareT>, 3>>& triple_target)
+  {
+    assert(not this->triples.empty());
+    triple_target.reserve(triple_target.size() + this->triples.size());
+    for (auto& [a, b, c] : this->triples)
+    {
+      auto& [out_a, out_b, out_c] = triple_target.emplace_back();
+
+      out_a.reserve(a.size());
+      for (auto& x : a)
+      {
+        out_a.emplace_back(x);
+      }
+
+      out_b.reserve(b.size());
+      for (auto& x : b)
+      {
+        out_b.emplace_back(x);
+      }
+
+      out_c.reserve(c.size());
+      for (auto& x : c)
+      {
+        out_c.emplace_back(x);
+      }
+    }
+    this->triples.clear();
+  }
+};
+
+class DummyEC {};
+
+template<typename... EC>
+class BaseProducerWithECs
+{
+protected:
+  using EC_types = std::tuple<std::map<std::vector<int>, EC>...>;
+
+  using EC_ptr_types = std::tuple<typename std::map<std::vector<int>, EC>::iterator...>;
+  
+  static constexpr std::size_t size = sizeof...(EC);
+
+  EC_types ECs;
+  EC_ptr_types EC_ptrs;
+
+  template<std::size_t I, typename... Args>
+  bool try_emplace(std::vector<int> key, Args&&... args)
+  {
+    bool emplaced;
+    std::tie(std::get<I>(EC_ptrs), emplaced) = std::get<I>(ECs).try_emplace(key, key, std::forward<Args>(args)...);
+    return emplaced;
+  }
+
+  template<std::size_t I, typename... Args>
+  bool try_emplace(std::nullopt_t, Args&&... args)
+  {
+    bool emplaced;
+    std::tie(std::get<I>(EC_ptrs), emplaced) = std::get<I>(ECs).try_emplace({}, std::forward<Args>(args)...);
+    return emplaced;
+  }
+
+  template<std::size_t I>
+  auto end()
+  {
+    return std::get<I>(ECs).end();
+  }
+
+  template<std::size_t I>
+  void clear()
+  {
+    std::get<I>(ECs).clear();
+    std::get<I>(EC_ptrs) = end<I>();
+  }
+
+  void clear()
+  {
+    EC_ptrs = std::apply([](auto&... maps)
+    {
+      (maps.clear(), ...);
+      return std::make_tuple(maps.end()...);
+    }, ECs);
+  }
+
+  BaseProducerWithECs()
+    : ECs(), EC_ptrs(std::apply([](auto&... maps) { return std::make_tuple(maps.end()...); }, ECs))
+  {
+  }
+};
+
+template<class FD, typename... EC>
+class BaseSummingTripleProducer : public BaseProducerWithECs<EC...>
+{
+protected:
+  Player const& P;
+  FHE_PK const& pk;
+  MachineBase& machine;
+  FD const& FieldD;
+
+  BaseSummingTripleProducer(Player const& P, FHE_PK const& pk, MachineBase& machine, FD const& FieldD)
+    : P(P)
+    , pk(pk)
+    , machine(machine)
+    , FieldD(FieldD)
+  {
+  }
+
+
+};
+
+template<class FD, typename... EC>
+class BasePairwiseTripleProducer : public BaseProducerWithECs<EC...>
+{
+protected:
+  PairwiseGenerator<FD>& generator;
+
+  BasePairwiseTripleProducer(PairwiseGenerator<FD>& generator)
+    : generator(generator)
+  {
+  }
 };
 
 #endif /* FHEOFFLINE_PRODUCER_H_ */

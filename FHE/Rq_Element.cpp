@@ -50,6 +50,12 @@ void Rq_Element::partial_assign(const Rq_Element& other)
 	a.resize(other.a.size());
 }
 
+void Rq_Element::allocate()
+{
+  for (int i=0; i<=lev; ++i)
+      a[i].allocate();
+}
+
 void Rq_Element::negate()
 {
 	for (int i=0; i<=lev; ++i)

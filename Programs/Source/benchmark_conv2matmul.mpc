@@ -1,0 +1,26 @@
+import sys
+from ml import Tensor
+from Compiler.instructions import *
+import functools
+
+if len(program.args) < 4:
+   print('Usage: %s <approach> <image_size> <count>' % program.args[0], file=sys.stderr)
+   exit(1)
+
+approach = program.args[1].upper()
+size = int(program.args[2])
+count = int(program.args[3])
+
+X = [Tensor((size, size), sint) for _ in range(count)]
+Y = [Tensor((size, size), sint) for _ in range(count)]
+z = [sint(size=size*size) for _ in range(count)]
+
+for i in range(count):
+    X[i].assign_vector(sint(size=size*size))
+    Y[i].assign_vector(sint(size=size*size))
+
+if "MATMUL" in approach:
+    vmatmuls(*(matmul_desc(z[i], X[i].get_vector(), Y[i].get_vector(), size, size, size) for i in range(count)))
+else:
+    print('Invalid approach: %s' % program.args[1], file=sys.stderr)
+    exit(1)

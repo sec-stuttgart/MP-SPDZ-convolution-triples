@@ -19,8 +19,11 @@ class PairwiseGenerator : public GeneratorBase
 {
     typedef typename FD::T T;
 
-    friend MultiEncCommit<FD>;
+    template<class,class>
+    friend class MultiEncCommitImpl;
     template<class U> friend class CowGearPrep;
+    template<class> friend class PairwiseMatmulTripleProducer;
+    template<class> friend class PairwiseConv2dTripleProducer;
 
     PlaintextVector<FD> a, b, c;
     AddableVector<Rq_Element> b_mod_q;

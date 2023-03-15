@@ -74,7 +74,8 @@ LDLIBS += -lboost_system -lssl -lcrypto
 
 ifeq ($(USE_NTL),1)
 CFLAGS += -DUSE_NTL
-LDLIBS := -lntl $(LDLIBS)
+LDLIBS := -lntl -lgmp $(LDLIBS)
+EXTRA_LDLIBS = -lgf2x
 endif
 
 ifeq ($(OS), Linux)
@@ -87,7 +88,38 @@ else
 BOOST = -lboost_thread $(MY_BOOST)
 endif
 
-CFLAGS += $(ARCH) $(MY_CFLAGS) $(GDEBUG) -Wextra -Wall $(OPTIM) -I$(ROOT) -pthread $(PROF) $(DEBUG) $(MOD) $(GF2N_LONG) $(PREP_DIR) $(SSL_DIR) $(SECURE) -std=c++11 -Werror
+GEAR_FLAGS = -DVERBOSE_CONV2D
+ifeq ($(GEAR_DIRECT_SUM),1)
+    GEAR_FLAGS += -DCONV2D_DIRECT_SUM
+else
+ifeq ($(GEAR_BASIC_MATMUL),1)
+    GEAR_FLAGS += -DCONV2D_BASIC_MATMUL
+endif
+endif
+
+ifeq ($(LOWGEAR),1)
+    MOD = -DMAX_MOD_SZ=6
+    ifeq ($(LOWGEAR_FILTER_CIPHERTEXTS),1)
+        GEAR_FLAGS += -DCONV2D_LOWGEAR_FILTER_CIPHERTEXTS
+    endif
+    ifeq ($(LOWGEAR_EXPANDED_BGV), 1)
+        GEAR_FLAGS += -DCONV2D_LOWGEAR_EXPANDED_BGV
+        ifeq ($(LOWGEAR_NO_EXPANDED_MASK),1)
+            GEAR_FLAGS += -DCONV2D_LOWGEAR_NO_EXPANDED_MASK
+        endif
+    endif
+else
+    MOD = -DMAX_MOD_SZ=6
+    ifeq ($(HIGHGEAR_NO_SUMS),1)
+    else
+        GEAR_FLAGS += -DCONV2D_SUMMING_CIPHERTEXTS -DCONV2D_MAX_IMAGE_DEPTH=512
+    endif
+    ifeq ($(HIGHGEAR_GENERIC_EC),1)
+        GEAR_FLAGS += -DCONV2D_HIGHGEAR_GENERIC_EC
+    endif
+endif
+
+CFLAGS += $(ARCH) $(MY_CFLAGS) $(GEAR_FLAGS) $(GDEBUG) -Wextra -Wall $(OPTIM) -I$(ROOT) -pthread $(PROF) $(DEBUG) $(MOD) $(GF2N_LONG) $(PREP_DIR) $(SSL_DIR) $(SECURE) -std=c++20 -Werror
 CPPFLAGS = $(CFLAGS)
 LD = $(CXX)
 

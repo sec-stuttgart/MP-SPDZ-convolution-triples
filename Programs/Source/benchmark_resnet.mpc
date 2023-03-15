@@ -1,0 +1,124 @@
+import sys
+from ml import Tensor
+from Compiler.instructions import *
+from Compiler.instructions_base import Instruction
+import functools
+
+if len(program.args) < 2:
+   print('Usage: %s <approach> <layers>' % program.args[0], file=sys.stderr)
+   exit(1)
+
+approach = program.args[1].upper()
+layer_count = int(program.args[2])
+
+assert layer_count in (18, 34)
+
+def conv(input, output_depth, kernel_size, stride=1):
+    stride_y, stride_x = stride, stride
+    kernel_height, kernel_width = kernel_size, kernel_size
+    input_shape = input.sizes
+    batch, input_height, input_width, input_depth = input_shape
+
+    assert input_height % stride_y == 0
+    assert input_width % stride_x == 0
+
+    assert kernel_size % 2 == 1
+    padding = kernel_size // 2, kernel_size // 2
+
+    output_height = input_height // stride_y
+    output_width = input_width // stride_x
+
+    output_shape = batch, output_height, output_width, output_depth
+    kernel_shape = output_depth, kernel_height, kernel_width, input_depth
+
+    if output_depth * kernel_height * kernel_width * input_depth > pow(2, 31 - Instruction.code_length) - 1:
+        assert output_depth % 2 == 0
+        outputs = conv(input, output_depth // 2, kernel_size, stride), conv(input, output_depth // 2, kernel_size, stride)
+
+        output = sfix.Tensor(output_shape)
+        for d in range(output_depth):
+            i, d = divmod(d, output_depth // 2)
+            output.assign_vector_by_indices(outputs[i].get_vector_by_indices(None, None, None, d), None, None, None, d)
+        return output
+    
+    stride = stride_y, stride_x
+
+    output = sfix.Tensor(output_shape)
+    kernel = sfix.Tensor(kernel_shape)
+
+
+    if "CONV2D" in approach:
+        res = sint(size=output.total_size())
+        vconv2ds(convolution_desc(res, input.get_vector().pre_mul(), input_shape, kernel.get_vector().pre_mul(), kernel_shape, padding, stride))
+        output.assign_vector(res)
+    elif "BASE" in approach:
+        for d in range(output_depth):
+            res = sint(size=output_height * output_width)
+            conv2ds(res, input.get_vector().pre_mul(), kernel.get_vector_by_indices(d, None, None, None).pre_mul(), output_height, output_width, input_height, input_width, kernel_height, kernel_width, stride_y, stride_x, input_depth, padding[0], padding[1], batch)
+            output.assign_vector_by_indices(res, None, None, None, d)
+    else:
+        raise ValueError(approach)
+
+    batch_mean = sfix.Tensor((output_depth,))
+    batch_scale = sfix.Tensor((output_depth,)) # already combined inverse standard deviation and scaling factor
+    batch_bias = sfix.Tensor((output_depth,))
+
+    @for_range_opt([batch, output_height, output_width])
+    def _(b, y, x):
+        output[b][y][x][:] = (output[b][y][x][:] - batch_mean[:]) * batch_scale[:] + batch_bias[:]
+
+    return output
+
+def maxpool(input, width=2, stride=None):
+    def max_mix(x, y):
+        return x + (x < y) * (y - x)
+
+    if stride is None:
+        stride = width
+
+    batch, input_height, input_width, depth = input.sizes
+    assert input_height % width == 0
+    assert input_width % width == 0
+    output_height = input_height // width
+    output_width = input_width // width
+    
+    output = sfix.Tensor((batch, output_height, output_width, depth))
+    @for_range_opt([batch, output_height, output_width])
+    def _(b, y, x):
+        assert width == 2
+        assert stride == width
+        output[b][y][x][:] = max_mix(
+            max_mix(input[b][2 * y + 0][2 * x + 0][:], input[b][2 * y + 0][2 * x + 1][:]), 
+            max_mix(input[b][2 * y + 1][2 * x + 0][:], input[b][2 * y + 1][2 * x + 1][:]))
+
+    return output
+
+def relu(x):
+    shape = x.sizes
+    result = sfix.Tensor(shape)
+    result.assign_vector((x[:] > 0) * x[:])
+    return result
+
+def resnet_block(count, input, output_depth, downsample=False):
+    x = input
+    for i in range(count):
+        if i == 0 and downsample:
+            stride = 2
+            y = conv(x, output_depth, 1, 2)
+        else:
+            stride = 1
+            y = x
+        x = relu(y + conv(relu(conv(x, output_depth, 3, stride)), output_depth, 3))
+    return x
+
+input = sfix.Tensor((1, 224, 224, 3))
+
+conv1 = maxpool(conv(input, 64, 7, 2))
+
+conv2 = resnet_block(2, conv1, 64)
+
+conv3 = resnet_block(2, conv2, 128, True)
+
+conv4 = resnet_block(2, conv3, 256, True)
+
+conv5 = resnet_block(2, conv4, 512, True)

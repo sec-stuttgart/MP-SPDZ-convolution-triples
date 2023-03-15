@@ -49,11 +49,10 @@ enum PT_Type   { Polynomial, Evaluation, Both };
  * multiplication over a vector.
  * Plaintexts can be added, subtracted, and multiplied via operator overloading.
  */
-template<class T,class FD,class _>
+template<class T, class FD, class _>
 class Plaintext
 {
   typedef typename FD::poly_type S;
-
 
   mutable vector<T> a;  // The thing in evaluation/FFT form
   mutable vector<S> b;  // Now in polynomial form
@@ -69,7 +68,9 @@ class Plaintext
 
   int degree() const;
 
-  public:
+public:
+  using poly_type = S;
+  using eval_type = T;
   
   const FD& get_field() const { return *Field_Data; }
 

@@ -45,7 +45,7 @@ class FHE_Params
 
   int n_mults() const { return FFTData.size() - 1; }
 
-  void set(const Ring& R,const vector<bigint>& primes);
+  void set(const Ring& R, const bigint& prime, const vector<bigint>& primes);
   void set(const vector<bigint>& primes);
   void set_sec(int sec);
   void set_min_sec(int sec);

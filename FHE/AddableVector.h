@@ -16,14 +16,14 @@ template<class T>
 class AddableVector: public vector<T>
 {
 public:
-    AddableVector<T>() {}
-    AddableVector<T>(size_t n, const T& x = T()) : vector<T>(n, x) {}
+    AddableVector() {}
+    AddableVector(size_t n, const T& x = T()) : vector<T>(n, x) {}
     template <class U, class FD, class S>
-    AddableVector<T>(const Plaintext<U,FD,S>& other) :
+    AddableVector(const Plaintext<U,FD,S>& other) :
             AddableVector<T>(other.get_poly()) {}
 
     template <class U>
-    AddableVector<T>(const vector<U>& other)
+    AddableVector(const vector<U>& other)
     {
         this->assign(other.begin(), other.end());
     }

@@ -72,6 +72,7 @@ elif program.args[1] == 'D':
 else:
     raise Exception('unknown network: ' + program.args[1])
 
+layers[0].debug_output = True
 opt = ml.Optimizer()
 opt.layers = layers
 for layer in layers:

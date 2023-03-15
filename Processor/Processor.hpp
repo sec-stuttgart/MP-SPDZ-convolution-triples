@@ -642,6 +642,50 @@ void SubProcessor<T>::conv2ds(const Instruction& instruction)
 }
 
 template<class T>
+void SubProcessor<T>::vmatmuls(matmul_desc_range matmuls)
+{
+  protocol.init_matmul();
+  for (auto matmul : matmuls)
+  {
+    protocol.prepare_matmul(S, matmul);
+  }
+  protocol.exchange();
+  for (auto matmul : matmuls)
+  {
+    protocol.finalize_matmul(S, matmul);
+  }
+}
+
+template<class T>
+void SubProcessor<T>::vconv2ds(convolution_desc_range convs)
+{
+  protocol.init_conv2d();
+  for (auto conv : convs)
+  {
+    if (conv.is_depthwise())
+    {
+      protocol.prepare_conv2d(S, conv.as_depthwise());
+    }
+    else
+    {
+      protocol.prepare_conv2d(S, conv);
+    }
+  }
+  protocol.exchange();
+  for (auto conv : convs)
+  {
+    if (conv.is_depthwise())
+    {
+      protocol.finalize_conv2d(S, conv.as_depthwise());
+    }
+    else
+    {
+      protocol.finalize_conv2d(S, conv);
+    }
+  }
+}
+
+template<class T>
 void SubProcessor<T>::secure_shuffle(const Instruction& instruction)
 {
     SecureShuffle<T>(S, instruction.get_size(), instruction.get_n(),

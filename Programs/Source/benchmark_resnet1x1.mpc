@@ -1,0 +1,63 @@
+import sys
+from ml import Tensor
+from Compiler.instructions import *
+from Compiler.instructions_base import Instruction
+import functools
+
+if len(program.args) < 6:
+   print('Usage: %s <approach> <image_size> <count> <input_depth> <inner_depth> <output_depth>' % program.args[0], file=sys.stderr)
+   exit(1)
+
+approach = program.args[1].upper()
+image_size = int(program.args[2])
+count = int(program.args[3])
+input_depth = int(program.args[4])
+inner_depth = int(program.args[5])
+output_depth = int(program.args[6])
+
+size = lambda s: functools.reduce(lambda a, b: a * b, s)
+
+def conv2d_1x1(input, output_depth):
+    input_shape = input.sizes
+    b, h, w, depth = input_shape
+    output_shape = b, h, w, output_depth
+    filter_shape = output_depth, 1, 1, depth
+
+    if size(filter_shape) > pow(2, 31 - Instruction.code_length) - 1:
+        assert output_depth % 2 == 0
+        outputs = conv2d_1x1(input, output_depth // 2), conv2d_1x1(input, output_depth // 2)
+
+        output = sint.Tensor(output_shape)
+        for d in range(output_depth):
+            i, d = divmod(d, output_depth // 2)
+            output.assign_vector_by_indices(outputs[i].get_vector_by_indices(None, None, None, d), None, None, None, d)
+        return output
+
+    f = sint.Tensor(filter_shape)
+    y = sint.Tensor(output_shape)
+
+    if "BASE" in approach:
+        for d in range(output_depth):
+            res = sint(size=size(output_shape[1:3]))
+            conv2ds(res, input.get_vector(), f.get_vector_by_indices(d, None, None, None), h, w, h, w, 1, 1, 1, 1, depth, 0, 0, b)
+            y.assign_vector_by_indices(res, None, None, None, d)
+    elif "CONV2D" in approach:
+        res = sint(size=size(output_shape))
+        vconv2ds(convolution_desc(res, input.get_vector(), input_shape, f.get_vector(), filter_shape, (0, 0), (1, 1)))
+        y.assign_vector(res)
+    elif "MATMUL" in approach:
+        res = sint(size=size(output_shape))
+        vmatmuls(matmul_desc(res, input.get_vector(), f.get_vector(), h * w, depth, output_depth))
+        y.assign_vector(res)
+    else:
+        print('Invalid approach: %s' % program.args[1], file=sys.stderr)
+        exit(1)
+    return y
+
+a = sint.Tensor((1, image_size, image_size, input_depth))
+a.assign_vector(sint(size=size((1, image_size, image_size, input_depth))))
+for i in range(count):
+    if i == 0:
+        y = conv2d_1x1(conv2d_1x1(a, inner_depth), output_depth) + conv2d_1x1(a, output_depth)
+    else:
+        y = conv2d_1x1(conv2d_1x1(y, inner_depth), output_depth) + y

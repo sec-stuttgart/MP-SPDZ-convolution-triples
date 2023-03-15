@@ -1,0 +1,2 @@
+./Scripts/benchmark.py [7,9,11,13,15,17,19,21,23,25] 512 1 3 --parties 2 --output_folder "$MP_SPDZ_BENCHMARKS/benchmarks-depthwise-3x3-2on$BENCHMARK_DELAY" --approaches "[('depthwise-base','online'),('depthwise-conv2d','online'),('depthwise-matmul','online')]" --repeats 2
+./Scripts/benchmark.py [7,9,11,13,15,17,19,21,23,25] 512 1 3 --parties 4 --output_folder "$MP_SPDZ_BENCHMARKS/benchmarks-depthwise-3x3-4on$BENCHMARK_DELAY" --approaches "[('depthwise-base','online'),('depthwise-conv2d','online'),('depthwise-matmul','online')]" --repeats 2

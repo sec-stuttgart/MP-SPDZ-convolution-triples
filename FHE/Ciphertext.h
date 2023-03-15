@@ -57,6 +57,7 @@ class Ciphertext
   const Rq_Element& c1() const { return cc1; }
   
   void assign_zero() { cc0.assign_zero(); cc1.assign_zero(); pk_id = 0; }
+  void allocate() { cc0.allocate(); cc1.allocate(); }
 
   // Scale down an element from level 1 to level 0, if at level 0 do nothing
   void Scale(const bigint& p)    { cc0.Scale(p); cc1.Scale(p); }

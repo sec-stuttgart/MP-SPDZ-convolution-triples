@@ -9,12 +9,15 @@
 #include <assert.h>
 #include <vector>
 #include <array>
+#include <span>
 using namespace std;
 
 #include "Tools/octetStream.h"
 #include "Tools/random.h"
 #include "Tools/PointerVector.h"
 #include "Networking/Player.h"
+#include "Tools/matmul.h"
+#include "Tools/conv2d.h"
 
 template<class T> class SubProcessor;
 template<class T> class ReplicatedMC;
@@ -113,6 +116,16 @@ public:
     template<int = 0>
     void conv2ds(SubProcessor<T>& proc, const Instruction& instruction)
     { proc.conv2ds(instruction); }
+
+    void init_matmul() { throw runtime_error("vmatmul (initialization) not implemented"); }
+    void prepare_matmul(std::span<T const>, matmul_desc) { throw runtime_error("vmatmul (preparation) not implemented"); }
+    void finalize_matmul(std::span<T>, matmul_desc) { throw runtime_error("vmatmul (finalization) not implemented"); }
+
+    void init_conv2d() { throw runtime_error("conv2d (initialization) not implemented"); }
+    void prepare_conv2d(std::span<T const>, convolution_desc) { throw runtime_error("conv2d (preparation) not implemented"); }
+    void finalize_conv2d(std::span<T>, convolution_desc) { throw runtime_error("conv2d (finalization) not implemented"); }
+    void prepare_conv2d(std::span<T const>, depthwise_convolution_desc) { throw runtime_error("depthwise conv2d (preparation) not implemented"); }
+    void finalize_conv2d(std::span<T>, depthwise_convolution_desc) { throw runtime_error("depthwise conv2d (finalization) not implemented"); }
 
     virtual void start_exchange() { exchange(); }
     virtual void stop_exchange() {}

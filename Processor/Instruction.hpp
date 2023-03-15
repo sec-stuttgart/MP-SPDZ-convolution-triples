@@ -18,6 +18,9 @@
 #include "Processor/PrivateOutput.hpp"
 #include "Math/bigint.hpp"
 
+#include "Tools/matmul.h"
+#include "Tools/conv2d.h"
+
 #include <stdlib.h>
 #include <algorithm>
 #include <sstream>
@@ -319,6 +322,16 @@ void BaseInstruction::parse_operands(istream& s, int pos, int file_pos)
       case CONV2DS:
         get_ints(r, s, 3);
         get_vector(12, start, s);
+        break;
+      case VMATMULS:
+        num_var_args = get_int(s);
+        get_vector(num_var_args, start, s);
+        assert(start.size() % MATMUL_DESC_FIELDS == 0);
+        break;
+      case VCONV2DS:
+        num_var_args = get_int(s);
+        get_vector(num_var_args, start, s);
+        assert(start.size() % CONVOLUTION_DESC_FIELDS == 0);
         break;
 
       // read from file, input is opcode num_args, 
@@ -691,6 +704,28 @@ unsigned BaseInstruction::get_max_reg(int reg_type) const
       return r[0] + start[0] * start[2];
   case CONV2DS:
       return r[0] + start[0] * start[1] * start[11];
+  case VMATMULS:
+    {
+      int res = 0;
+      for (auto matmul : matmul_desc_range{start})
+      {
+        res = std::max(res, matmul.result_address + matmul.result_size());
+        res = std::max(res, matmul.left_address + matmul.left_size());
+        res = std::max(res, matmul.right_address + matmul.result_size());
+      }
+      return res;
+    }
+  case VCONV2DS:
+    {
+      int res = 0;
+      for (auto conv : convolution_desc_range{start})
+      {
+        res = std::max(res, conv.image_address + conv.image_size());
+        res = std::max(res, conv.filter_address + conv.filter_size());
+        res = std::max(res, conv.output_address + conv.output_size());
+      }
+      return res;
+    }
   case OPEN:
       skip = 2;
       break;
@@ -1043,6 +1078,12 @@ inline void Instruction::execute(Processor<sint, sgf2n>& Proc) const
         return;
       case CONV2DS:
         Proc.Procp.protocol.conv2ds(Proc.Procp, *this);
+        return;
+      case VMATMULS:
+        Proc.Procp.vmatmuls(matmul_desc_range{start});
+        return;
+      case VCONV2DS:
+        Proc.Procp.vconv2ds(convolution_desc_range{start});
         return;
       case TRUNC_PR:
         Proc.Procp.protocol.trunc_pr(start, size, Proc.Procp);

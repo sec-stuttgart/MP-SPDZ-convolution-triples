@@ -44,6 +44,9 @@ protected:
     vector<array<T, 2>> inverses;
     vector<T> bits;
     vector<vector<InputTuple<T>>> inputs;
+    map<matmul_dimensions, vector<array<vector<T>, 3>>> matmul_triples;
+    map<convolution_dimensions, vector<array<vector<T>, 3>>> convolution_triples;
+    map<depthwise_convolution_triple_dimensions, vector<array<vector<T>, 3>>> depthwise_convolution_triples;
 
     vector<dabit<T>> dabits;
 
@@ -56,6 +59,9 @@ protected:
     virtual void buffer_inverses();
     virtual void buffer_bits() { throw runtime_error("no bits"); }
     virtual void buffer_inputs(int player);
+    virtual void buffer_matmul_triples(matmul_dimensions dimensions) override { (void)dimensions; throw runtime_error("no matmul triples"); }
+    virtual void buffer_conv2d_triples(convolution_dimensions dimensions) override { (void)dimensions; throw runtime_error("no conv2d triples"); }
+    virtual void buffer_conv2d_triples(depthwise_convolution_triple_dimensions dimensions) override { (void)dimensions; throw runtime_error("no depthwise conv2d triples"); }
 
     // don't call this if T::Input requires input tuples
     void buffer_inputs_as_usual(int player, SubProcessor<T>* proc);
@@ -107,6 +113,10 @@ public:
             int vector_size);
 
     virtual void get_dabit_no_count(T& a, typename T::bit_type& b);
+
+    virtual array<vector<T>, 3> get_matmul_triple_no_count(matmul_dimensions dimensions) override;
+    virtual array<vector<T>, 3> get_conv2d_triple_no_count(convolution_dimensions dimensions) override;
+    virtual array<vector<T>, 3> get_conv2d_triple_no_count(depthwise_convolution_triple_dimensions dimensions) override;
 
     /// Get fresh random value
     virtual T get_random();

@@ -1,0 +1,32 @@
+import sys
+from ml import Tensor
+from Compiler.instructions import *
+import functools
+
+if len(program.args) < 4:
+   print('Usage: %s <approach> <outer_dimension> <inner_dimension> <count> [right_outer_dimension]' % program.args[0], file=sys.stderr)
+   exit(1)
+
+approach = program.args[1].upper()
+left_outer_dimension = int(program.args[2])
+inner_dimension = int(program.args[3])
+count = int(program.args[4])
+try:
+    right_outer_dimension = int(program.args[5])
+except (ValueError, IndexError):
+    right_outer_dimension = left_outer_dimension
+
+a = sint(size=left_outer_dimension * inner_dimension)
+b = sint(size=inner_dimension * right_outer_dimension)
+for _ in range(count):
+    c = sint(size=left_outer_dimension * right_outer_dimension)
+    if "BASE" in approach:
+        matmuls(c, a, b, left_outer_dimension, inner_dimension, right_outer_dimension)
+    elif "CONV2D" in approach:
+        vconv2ds(convolution_desc(c, a, (1,1,left_outer_dimension,inner_dimension), b, (right_outer_dimension,1,1,inner_dimension), (0,0), (1,1)))
+    elif "MATMUL" in approach:
+        vmatmuls(matmul_desc(c, a, b, left_outer_dimension, inner_dimension, right_outer_dimension))
+    else:
+        print('Invalid approach: %s' % program.args[1], file=sys.stderr)
+        exit(1)
+    a += c.get_vector(0, a.size)

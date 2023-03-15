@@ -113,6 +113,43 @@ void OfflineMachine<W>::generate()
             remove(filename.c_str());
     }
 
+    for (auto [dimensions, count] : usage.matmul)
+    {
+        assert(count > 0);
+        string filename = Sub_Data_Files<T>::get_matmul_filename(playerNames, dimensions);
+        ofstream out(filename, iostream::out | iostream::binary);
+        file_signature<T>().output(out);
+        for (int j = 0; j < count; ++j) // TODO: maybe fill according to buffered_total
+        {
+            auto [a, b, c] = preprocessing.get_matmul_triple(dimensions);
+            for (auto& x : a)
+                x.output(out, false);
+            for (auto& x : b)
+                x.output(out, false);
+            for (auto& x : c)
+                x.output(out, false);
+        }
+    }
+
+    for (auto [dimensions, count] : usage.conv2d)
+    {
+        assert(count > 0);
+        string filename = Sub_Data_Files<T>::get_conv2d_filename(playerNames, dimensions);
+        ofstream out(filename, iostream::out | iostream::binary);
+        file_signature<T>().output(out);
+        for (int j = 0; j < count; ++j) // TODO: maybe fill according to buffered_total
+        {
+            auto [a, b, c] = preprocessing.get_conv2d_triple(dimensions);
+            for (auto& x : a)
+                x.output(out, false);
+            for (auto& x : b)
+                x.output(out, false);
+            for (auto& x : c)
+                x.output(out, false);
+        }
+    }
+
+
     for (int i = 0; i < P.num_players(); i++)
     {
         auto n_inputs = usage.inputs[i][T::clear::field_type()];

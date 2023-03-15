@@ -40,6 +40,60 @@ string PrepBase::get_edabit_filename(const string& prep_data_dir,
             + to_string(my_num) + get_suffix(thread_num);
 }
 
+string get_matmul_file_prefix(const string& prep_data_dir, matmul_dimensions dimensions, const string& type_short)
+{
+        auto result = prep_data_dir + "matmul-";
+        result += type_short;
+        result += "-";
+        result += dimensions.as_string("-");
+        return result;
+}
+
+string PrepBase::get_matmul_filename(const string& prep_data_dir, matmul_dimensions dimensions, const string& type_short, int my_num, int thread_num)
+{
+        auto result = get_matmul_file_prefix(prep_data_dir, dimensions, type_short);
+        result += "-P";
+        result += to_string(my_num);
+        result += get_suffix(thread_num);
+        return result;
+}
+
+string get_conv2d_file_prefix(const string& prep_data_dir, convolution_dimensions dimensions, const string& type_short)
+{
+        auto result = prep_data_dir + "conv2d-";
+        result += type_short;
+        result += "-";
+        result += dimensions.as_string("-");
+        return result;
+}
+
+string get_conv2d_file_prefix(const string& prep_data_dir, depthwise_convolution_triple_dimensions dimensions, const string& type_short)
+{
+        auto result = prep_data_dir + "depthwise-conv2d-";
+        result += type_short;
+        result += "-";
+        result += dimensions.as_string("-");
+        return result;
+}
+
+string PrepBase::get_conv2d_filename(const string& prep_data_dir, convolution_dimensions dimensions, const string& type_short, int my_num, int thread_num)
+{
+        auto result = get_conv2d_file_prefix(prep_data_dir, dimensions, type_short);
+        result += "-P";
+        result += to_string(my_num);
+        result += get_suffix(thread_num);
+        return result;
+}
+
+string PrepBase::get_conv2d_filename(const string& prep_data_dir, depthwise_convolution_triple_dimensions dimensions, const string& type_short, int my_num, int thread_num)
+{
+        auto result = get_conv2d_file_prefix(prep_data_dir, dimensions, type_short);
+        result += "-P";
+        result += to_string(my_num);
+        result += get_suffix(thread_num);
+        return result;
+}
+
 void PrepBase::print_left(const char* name, size_t n, const string& type_string,
         size_t used)
 {

@@ -104,6 +104,8 @@ opcodes = dict(
     MATMULS = 0xAA,
     MATMULSM = 0xAB,
     CONV2DS = 0xAC,
+    VMATMULS = 0xC3,
+    VCONV2DS = 0xC4,
     CHECK = 0xAF,
     PRIVATEOUTPUT = 0xAD,
     # Shuffling
@@ -819,7 +821,10 @@ class Instruction(object):
             print("Compiled %d lines at" % self.__class__.count, time.asctime())
 
     def get_code(self, prefix=0):
-        return (prefix << self.code_length) + self.code
+        code = (prefix << self.code_length) + self.code
+        if code > pow(2, 31) - 1:
+            raise CompilerError(f"Code too large (code={code}, prefix={prefix}, code without prefix={self.code})")
+        return code
 
     def get_encoding(self):
         enc = int_to_bytes(self.get_code())

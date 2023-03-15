@@ -61,17 +61,17 @@ inline void avx_memzero(void* dest, size_t length)
 #ifdef __AVX__
 	__m256i* d = (__m256i*)dest;
 	__m256i s = _mm256_setzero_si256();
-	while (length >= 32)
+	while (length >= sizeof(__m256i))
 	{
 		_mm256_storeu_si256(d++, s);
-		length -= 32;
+		length -= sizeof(__m256i);
 	}
 #else
 	void* d = dest;
 #endif
 	switch (length)
 	{
-	case 8:
+	case sizeof(int64_t):
 		*(int64_t*)d = 0;
 	    return;
 	default:

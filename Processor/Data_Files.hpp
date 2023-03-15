@@ -7,6 +7,7 @@
 #include "Protocols/dabit.h"
 #include "Math/Setup.h"
 #include "GC/BitPrepFiles.h"
+#include "Math/gf2n.h"
 
 #include "Protocols/MascotPrep.hpp"
 
@@ -83,6 +84,18 @@ string Sub_Data_Files<T>::get_edabit_filename(const Names& N, int n_bits,
 {
   return PrepBase::get_edabit_filename(
       get_prep_sub_dir<T>(N.num_players()), n_bits, N.my_num(), thread_num);
+}
+
+template<class T>
+string Sub_Data_Files<T>::get_matmul_filename(const Names& N, matmul_dimensions dimensions, int thread_num)
+{
+  return PrepBase::get_matmul_filename(get_prep_sub_dir<T>(N.num_players()), dimensions, T::type_short(), N.my_num(), thread_num);
+}
+
+template<class T>
+string Sub_Data_Files<T>::get_conv2d_filename(const Names& N, convolution_dimensions dimensions, int thread_num)
+{
+  return PrepBase::get_conv2d_filename(get_prep_sub_dir<T>(N.num_players()), dimensions, T::type_short(), N.my_num(), thread_num);
 }
 
 template<class T>
@@ -292,6 +305,99 @@ void Sub_Data_Files<T>::get_dabit_no_count(T& a, typename T::bit_type& b)
   dabit_buffer.input(tmp);
   a = tmp.first;
   b = tmp.second;
+}
+
+
+template<class T>
+std::array<std::vector<T>, 3> Sub_Data_Files<T>::get_matmul_triple_no_count(matmul_dimensions dimensions)
+{
+  auto [position, inserted] = matmul_buffers.emplace(std::piecewise_construct, std::make_tuple(dimensions), std::make_tuple());
+  auto& [key, buffer] = *position;
+  if (inserted)
+  {
+    buffer.setup(PrepBase::get_matmul_filename(prep_data_dir, dimensions, T::type_short(), my_num, thread_num), T::size(), T::type_string(), "Matmul");
+  }
+  std::array<int, 3> sizes = { dimensions.left_size(), dimensions.right_size(), dimensions.result_size() };
+  std::array<std::vector<T>, 3> result = {};
+  for (int j = 0; j < 3; ++j)
+  {
+    result[j].resize(sizes[j]);
+    for (int i = 0; i < sizes[j]; ++i)
+    {
+      if constexpr (not std::is_same_v<typename T::clear, gf2n_short>)
+      {
+        buffer.input(result[j][i]);
+      }
+      else
+      {
+        throw std::runtime_error("Not implemented for gf2n due to compiler bug");
+      }
+    }
+  }
+  
+  return result;
+}
+
+template<class T>
+std::array<std::vector<T>, 3> Sub_Data_Files<T>::get_conv2d_triple_no_count(convolution_dimensions dimensions)
+{
+  auto [position, inserted] = conv2d_buffers.emplace(std::piecewise_construct, std::make_tuple(dimensions), std::make_tuple());
+  auto& [key, buffer] = *position;
+  if (inserted)
+  {
+    buffer.setup(PrepBase::get_conv2d_filename(prep_data_dir, dimensions, T::type_short(), my_num, thread_num), T::size(), T::type_string(), "Conv2d");
+  }
+  std::array<int, 3> sizes = { dimensions.image_size(), dimensions.filter_size(), dimensions.full_output_size() };
+  std::array<std::vector<T>, 3> result = {};
+
+  for (int j = 0; j < 3; ++j)
+  {
+    result[j].resize(sizes[j]);
+    for (int i = 0; i < sizes[j]; ++i)
+    {
+      if constexpr (not std::is_same_v<typename T::clear, gf2n_short>)
+      {
+        buffer.input(result[j][i]);
+      }
+      else
+      {
+        throw std::runtime_error("Not implemented for gf2n due to compiler bug");
+      }
+    }
+  }
+
+  return result;
+}
+
+template<class T>
+std::array<std::vector<T>, 3> Sub_Data_Files<T>::get_conv2d_triple_no_count(depthwise_convolution_triple_dimensions dimensions)
+{
+  auto [position, inserted] = depthwise_conv2d_buffers.emplace(std::piecewise_construct, std::make_tuple(dimensions), std::make_tuple());
+  auto& [key, buffer] = *position;
+  if (inserted)
+  {
+    buffer.setup(PrepBase::get_conv2d_filename(prep_data_dir, dimensions, T::type_short(), my_num, thread_num), T::size(), T::type_string(), "Conv2d");
+  }
+  std::array<int, 3> sizes = { dimensions.image_size(), dimensions.filter_size(), dimensions.full_output_size() };
+  std::array<std::vector<T>, 3> result = {};
+
+  for (int j = 0; j < 3; ++j)
+  {
+    result[j].resize(sizes[j]);
+    for (int i = 0; i < sizes[j]; ++i)
+    {
+      if constexpr (not std::is_same_v<typename T::clear, gf2n_short>)
+      {
+        buffer.input(result[j][i]);
+      }
+      else
+      {
+        throw std::runtime_error("Not implemented for gf2n due to compiler bug");
+      }
+    }
+  }
+
+  return result;
 }
 
 template<class T>

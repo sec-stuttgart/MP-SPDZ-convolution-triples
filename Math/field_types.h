@@ -16,7 +16,7 @@ enum Dtype
     DATA_BIT,
     DATA_INVERSE,
     DATA_DABIT,
-    N_DTYPE
+    N_DTYPE,
 };
 
 #endif /* MATH_FIELD_TYPES_H_ */

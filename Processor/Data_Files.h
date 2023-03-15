@@ -12,6 +12,8 @@
 #include "Networking/Player.h"
 #include "Protocols/edabit.h"
 #include "PrepBase.h"
+#include "Tools/matmul.h"
+#include "Tools/conv2d.h"
 
 #include <fstream>
 #include <map>
@@ -32,7 +34,7 @@ public:
   // assume that tag is three integers
   DataTag(const int* tag)
   {
-    strncpy((char*)t, (char*)tag, 3 * sizeof(int));
+    memcpy((char*)t, (char*)tag, 3 * sizeof(int));
     t[3] = 0;
   }
   string get_string() const
@@ -64,6 +66,9 @@ public:
   array<map<DataTag, long long>, N_DATA_FIELD_TYPE> extended;
   map<pair<bool, int>, long long> edabits;
   map<array<int, 3>, long long> matmuls;
+  map<matmul_dimensions, long long> matmul;
+  map<convolution_dimensions, long long> conv2d;
+  map<depthwise_convolution_triple_dimensions, long long> depthwise_conv2d;
 
   DataPositions(int num_players = 0);
   DataPositions(const Player& P) : DataPositions(P.num_players()) {}
@@ -161,6 +166,54 @@ public:
   /// Get fresh random multiplication triple
   virtual array<T, 3> get_triple(int n_bits);
   virtual array<T, 3> get_triple_no_count(int n_bits);
+  /// Get fresh random matmul triple
+  virtual array<vector<T>, 3> get_matmul_triple(matmul_dimensions dimensions) { usage.matmul[dimensions] += 1; return get_matmul_triple_no_count(dimensions); };
+  virtual array<vector<T>, 3> get_matmul_triple_no_count(matmul_dimensions dimensions) { (void)dimensions; throw not_implemented(); }
+  /// Get fresh random conv2d triple
+  virtual array<vector<T>, 3> get_conv2d_triple(convolution_dimensions dimensions) { usage.conv2d[dimensions] += 1; return get_conv2d_triple_no_count(dimensions); };
+  virtual array<vector<T>, 3> get_conv2d_triple_no_count(convolution_dimensions dimensions) { (void)dimensions; throw not_implemented(); }
+  virtual array<vector<T>, 3> get_conv2d_triple(depthwise_convolution_dimensions dimensions)
+  {
+    auto triple_dimensions = static_cast<depthwise_convolution_triple_dimensions>(dimensions);
+    usage.depthwise_conv2d[triple_dimensions] += dimensions.image_depth;
+    
+    auto image_size = dimensions.image_size();
+    auto filter_size = dimensions.filter_size();
+    auto output_size = dimensions.full_output_size();
+
+    auto triple_image_size = triple_dimensions.image_size();
+    auto triple_filter_size = triple_dimensions.filter_size();
+    auto triple_output_size = triple_dimensions.full_output_size();
+
+    CONV2D_ASSERT(image_size == triple_image_size * dimensions.image_depth);
+    CONV2D_ASSERT(filter_size == triple_filter_size * dimensions.image_depth);
+    CONV2D_ASSERT(output_size == triple_output_size * dimensions.image_depth);
+
+    auto result = std::array<std::vector<T>, 3>{ std::vector<T>(image_size), std::vector<T>(filter_size), std::vector<T>(output_size) };
+    auto& [image, filter, output] = result;
+    for (int c = 0; c < dimensions.image_depth; ++c)
+    {
+      auto [triple_image, triple_filter, triple_output] = get_conv2d_triple_no_count(triple_dimensions);
+      CONV2D_ASSERT(triple_image.size() == static_cast<std::size_t>(triple_image_size));
+      CONV2D_ASSERT(triple_filter.size() == static_cast<std::size_t>(triple_filter_size));
+      CONV2D_ASSERT(triple_output.size() == static_cast<std::size_t>(triple_output_size));
+
+      for (int i = 0; i < triple_image_size; ++i)
+      {
+        image[nDaccess({i, triple_image_size}, {c, dimensions.image_depth})] = triple_image[i];
+      }
+      for (int i = 0; i < triple_filter_size; ++i)
+      {
+        filter[nDaccess({i, triple_filter_size}, {c, dimensions.image_depth})] = triple_filter[i];
+      }
+      for (int i = 0; i < triple_output_size; ++i)
+      {
+        output[nDaccess({i, triple_output_size}, {c, dimensions.image_depth})] = triple_output[i];
+      }
+    }
+    return result;
+  };
+  virtual array<vector<T>, 3> get_conv2d_triple_no_count(depthwise_convolution_triple_dimensions dimensions) { (void)dimensions; throw not_implemented(); }
   /// Get fresh random bit
   virtual T get_bit();
   /// Get fresh random value in domain
@@ -183,6 +236,9 @@ public:
 
   virtual void buffer_triples() {}
   virtual void buffer_inverses() {}
+  virtual void buffer_matmul_triples(matmul_dimensions dimensions) { (void)dimensions; }
+  virtual void buffer_conv2d_triples(convolution_dimensions dimensions) { (void)dimensions; }
+  virtual void buffer_conv2d_triples(depthwise_convolution_triple_dimensions dimensions) { (void)dimensions; }
 
   virtual Preprocessing<typename T::part_type>& get_part() { throw runtime_error("no part"); }
 };
@@ -202,6 +258,9 @@ class Sub_Data_Files : public Preprocessing<T>
   BufferOwner<InputTuple<T>, RefInputTuple<T>> my_input_buffers;
   map<DataTag, BufferOwner<T, T> > extended;
   BufferOwner<dabit<T>, dabit<T>> dabit_buffer;
+  map<matmul_dimensions, BufferOwner<T, T>> matmul_buffers;
+  map<convolution_dimensions, BufferOwner<T, T>> conv2d_buffers;
+  map<depthwise_convolution_triple_dimensions, BufferOwner<T, T>> depthwise_conv2d_buffers;
   map<int, ifstream*> edabit_buffers;
 
   int my_num,num_players;
@@ -225,6 +284,8 @@ public:
       int thread_num = -1);
   static string get_edabit_filename(const Names& N, int n_bits,
       int thread_num = -1);
+  static string get_matmul_filename(const Names& N, matmul_dimensions dimensions, int thread_num = -1);
+  static string get_conv2d_filename(const Names& N, convolution_dimensions dimensions, int thread_num = -1);
 
   Sub_Data_Files(int my_num, int num_players, const string& prep_data_dir,
       DataPositions& usage, int thread_num = -1);
@@ -277,6 +338,10 @@ public:
   void setup_extended(const DataTag& tag, int tuple_size = 0);
   void get_no_count(vector<T>& S, DataTag tag, const vector<int>& regs, int vector_size);
   void get_dabit_no_count(T& a, typename T::bit_type& b);
+
+  array<vector<T>, 3> get_matmul_triple_no_count(matmul_dimensions dimensions) override;
+  array<vector<T>, 3> get_conv2d_triple_no_count(convolution_dimensions dimensions) override;
+  array<vector<T>, 3> get_conv2d_triple_no_count(depthwise_convolution_triple_dimensions dimensions) override;
 
   part_type& get_part();
 };

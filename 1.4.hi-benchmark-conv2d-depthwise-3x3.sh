@@ -1,0 +1,1 @@
+./Scripts/benchmark.py [7,9,11,13,15,17,19,21,23,25] 512 1 3 --parties 4 --output_folder "$MP_SPDZ_BENCHMARKS/benchmarks-depthwise-3x3-4hi$BENCHMARK_DELAY" --approaches "[('depthwise-base','highgear'),('emulate-depthwise-conv2d','highgear'),('emulate-depthwise-conv2d','highgear-direct'),('depthwise-conv2d','highgear')]" --repeats 2

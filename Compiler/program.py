@@ -1063,6 +1063,8 @@ class Tape:
                 elif domain == 'matmul':
                     res += ['%s matrix multiplications (%dx%d * %dx%d)' %
                             (n, req[1][0], req[1][1], req[1][1], req[1][2])]
+                elif req[1] in ('vmatmul', 'vconv2d'):
+                    res += ["%s %s %ss %s" % (n, domain, req[1], ", ".join(map(str, req[2:])))]
                 elif req[0] != 'all':
                     res += ['%s %s %ss' % (n, domain, req[1])]
             if self['all','round']:
@@ -1173,7 +1175,7 @@ class Tape:
             if size is None:
                 size = Compiler.instructions_base.get_global_vector_size()
             if size is not None and size > self.maximum_size:
-                raise CompilerError('vector too large: %d' % size)
+                print(f"WARNING: Large vector (size={size}) cannot be processed by instructions utilizing size encoded in code")
             self.size = size
             self.vectorbase = self
             self.relative_i = 0

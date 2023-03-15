@@ -1,5 +1,7 @@
 # Offline data, runtime logs #
 ##############################
+benchmarks/*
+!benchmarks/README.md
 Player-Data
 Player-Data/*
 Prep-Data/*

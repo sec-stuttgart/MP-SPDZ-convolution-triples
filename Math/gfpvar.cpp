@@ -154,13 +154,13 @@ void gfpvar_<X, L>::assign_one()
 }
 
 template<int X, int L>
-bool gfpvar_<X, L>::is_zero()
+bool gfpvar_<X, L>::is_zero() const
 {
     return isZero(a, ZpD);
 }
 
 template<int X, int L>
-bool gfpvar_<X, L>::is_one()
+bool gfpvar_<X, L>::is_one() const
 {
     return isOne(a, ZpD);
 }

@@ -177,7 +177,7 @@ void modp_<L>::to_bigint(bigint& ans,const Zp_Data& ZpD,bool reduce) const
 template<int L>
 void to_modp(modp_<L>& ans,int x,const Zp_Data& ZpD)
 {
-  inline_mpn_zero(ans.x,ZpD.t);
+  inline_mpn_zero(ans.x, L);
   if (x>=0)
     { ans.x[0]=x;
       if (ZpD.t==1) { ans.x[0]=ans.x[0]%ZpD.prA[0]; }

@@ -1,5 +1,5 @@
-#ifndef _Data
-#define _Data
+#ifndef DATA_
+#define DATA_
 
 #include <string.h>
 

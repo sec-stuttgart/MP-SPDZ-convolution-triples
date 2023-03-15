@@ -1,0 +1,2 @@
+./Scripts/benchmark.py 7 512 1 3 256 --parties 2 --output_folder "$MP_SPDZ_BENCHMARKS/benchmarks-3x3-2lo-emul0$BENCHMARK_DELAY" --approaches "[('conv2d','lowgear'),('conv2d','lowgear-direct')]" --repeats 2
+./Scripts/benchmark.py [56,28,14,7] [64,128,256,512] 1 3 2 --zip_sizes_and_depths True --parties 2 --output_folder "$MP_SPDZ_BENCHMARKS/benchmarks-3x3-2lo-emul1$BENCHMARK_DELAY" --approaches "[('base','lowgear')]" --repeats 2

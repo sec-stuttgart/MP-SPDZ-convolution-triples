@@ -1481,7 +1481,7 @@ class ConvBase(BaseLayer):
                     w = weight_shape[i - 1]
                 else:
                     w = weight_shape[i]
-                if (input_shape[i] % stride[1] == 0):
+                if (input_shape[i] % s == 0):
                     pad_total = max(w - s, 0)
                 else:
                     pad_total = max(w - (input_shape[i] % s), 0)
@@ -1566,6 +1566,28 @@ class ConvBase(BaseLayer):
         weights = MultiArray(shape, self.weight_squant,
                              address=self.temp_weights)
         return inputs, weights
+
+class VConv2d(ConvBase):
+    def n_summands(self):
+        _, weights_h, weights_w, _ = self.weight_shape
+        _, inputs_h, inputs_w, n_channels_in = self.input_shape
+        return weights_h * weights_w * n_channels_in
+
+    def _forward(self, batch):
+        res = sint(size=self.output_shape[0] * self.output_shape[1] * self.output_shape[2] * self.output_shape[3])
+        conv = convolution_desc(res, self.X.get_vector().pre_mul(), self.input_shape, self.weights.get_vector().pre_mul(), self.weight_shape, self.padding, self.stride)
+        vconv2ds(conv)
+        self.unreduced.assign(res)
+        self.reduction(len(batch))
+        if self.debug_output:
+            print_ln('%s weights %s', self, self.weights.reveal_nested())
+            print_ln('%s bias %s', self, self.bias.reveal_nested())
+            @for_range(len(batch))
+            def _(i):
+                print_ln('%s X %s %s', self, i, self.X[batch[i]].reveal_nested())
+                print_ln('%s Y %s %s', self, i, self.Y[i].reveal_nested())
+
+
 
 class Conv2d(ConvBase):
     def n_summands(self):
@@ -1677,7 +1699,7 @@ class QuantConvBase(QuantBase):
 class QuantConv2d(QuantConvBase, Conv2d):
     pass
 
-class FixConv2d(Conv2d, FixBase):
+class FixConv2d(VConv2d, FixBase):
     """ Fixed-point 2D convolution layer.
 
     :param input_shape: input shape (tuple/list of four int)

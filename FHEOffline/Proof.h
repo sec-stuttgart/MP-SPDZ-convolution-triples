@@ -3,6 +3,8 @@
 
 #include <math.h>
 #include <vector>
+#include <numeric>
+#include <functional>
 using namespace std;
 
 #include "Math/bigint.h"
@@ -11,6 +13,7 @@ using namespace std;
 #include "Protocols/CowGearOptions.h"
 
 #include "config.h"
+#include "FHE/P2Data.h"
 
 enum SlackType
 {
@@ -20,11 +23,26 @@ enum SlackType
   ACTIVE_SPDZ2_SLACK = -4,
 };
 
+template<typename Field>
+auto check_decoding_mod2(Field const&)
+{
+  if constexpr (std::is_same_v<Field, P2Data>)
+  {
+    return std::true_type{};
+  }
+  else
+  {
+    return std::false_type{};
+  }
+}
+
 class Proof
 {
   unsigned int sec;
 
+protected:
   bool diagonal;
+private:
 
   Proof();   // Private to avoid default 
 
@@ -149,6 +167,66 @@ class Proof
             output += input.at(j);
         }
   }
+
+  template<typename Value, bool CheckDecodingMod2 = false>
+  [[nodiscard]] bool check_sparse(Value const& value, std::bool_constant<CheckDecodingMod2> = {}) const
+  {
+    if (diagonal)
+    {
+      if constexpr (std::is_same_v<Value, Plaintext_<P2Data>> or std::is_same_v<Value, Plaintext_<FFT_Data>>)
+      {
+        return value.is_diagonal();
+      }
+      else
+      {
+        using std::begin;
+        using std::end;
+        return std::all_of(++begin(value), end(value), [](auto const& x) 
+        { 
+          if constexpr (CheckDecodingMod2)
+          {
+            return (x.get_limb(0) % 2) == 0;
+          }
+          else
+          {
+            return x == 0;
+          }
+        });
+      }
+    }
+    return true;
+  }
+
+  template<typename Collection>
+  [[nodiscard]] bool check_all_sparse(Collection const& collection) const
+  {
+    if (diagonal)
+    {
+      using std::begin;
+      using std::end;
+      return std::all_of(begin(collection), end(collection), [this](auto const& x) { return check_sparse(x); });
+    }
+    return true;
+  }
+
+  template<typename Value>
+  void randomize(PRNG& prng, Value& value) const
+  {
+    if (diagonal)
+    {
+      value.randomize(prng, Diagonal);
+    }
+    else
+    {
+      value.randomize(prng);
+    }
+  }
+
+  template<typename Value>
+  void randomize(PRNG& prng, Value& value, int bits) const
+  {
+    value.randomize(prng, bits, diagonal);
+  }
 };
 
 class NonInteractiveProof : public Proof
@@ -190,5 +268,150 @@ public:
     rand_check = (bigint(2) << B_rand_length);
   }
 };
+
+template<typename BaseProof>
+class SparseProof : public BaseProof
+{
+  std::vector<int> sparcity;
+
+public:
+  SparseProof(std::vector<int> const& sparse, int sec, const FHE_PK& pk,
+      int n_proofs = 1, bool diagonal = false) :
+        BaseProof(sec, pk, n_proofs, true) ,
+        sparcity(sparse)
+  {
+    this->diagonal = diagonal;
+  }
+
+  std::vector<int> const& get_sparcity() const
+  {
+    return sparcity;
+  }
+
+  bool use_top_gear(const FHE_PK&)
+  {
+    assert(this->top_gear == false);
+    return this->top_gear;
+  }
+
+  static int n_ciphertext_per_proof(int sec, const FHE_PK& pk, bool =
+      false)
+  {
+    return BaseProof::n_ciphertext_per_proof(sec, pk, true);
+  }
+
+  template<typename Value, bool CheckDecodingMod2 = false>
+  [[nodiscard]] bool check_sparse(Value const& value, std::bool_constant<CheckDecodingMod2> check = {}) const
+  {
+    if (this->get_diagonal())
+    {
+      return BaseProof::check_sparse(value, check);
+    }
+    else
+    {
+      if constexpr (std::is_same_v<Value, Plaintext_<P2Data>> or std::is_same_v<Value, Plaintext_<FFT_Data>>)
+      {
+        assert(sparcity.size() == value.num_slots());
+        for (unsigned int i = 0; i < value.num_slots(); ++i)
+        {
+          if (sparcity[i] and (value.coeff(i) != 0))
+          {
+            return false;
+          }
+        }
+      }
+      else
+      {
+        assert(sparcity.size() == value.size());
+        using std::begin;
+        using std::end;
+        return std::transform_reduce(begin(value), end(value), begin(sparcity), true, std::logical_and{}, [](auto const& x, auto sparse)
+        {
+          if (sparse)
+          {
+            if constexpr (CheckDecodingMod2)
+            {
+              if ((x.get_limb(0) % 2) != 0)
+              {
+                return false;
+              }
+            }
+            else
+            {
+              if (x != 0)
+              {
+                return false;
+              }
+            }
+          }
+          return true;
+        });
+      }
+      return true;
+    }
+  }
+
+  template<typename Collection>
+  [[nodiscard]] bool check_all_sparse(Collection const& collection) const
+  {
+    using std::begin;
+    using std::end;
+    return std::all_of(begin(collection), end(collection), [this](auto const& x) { return check_sparse(x); });
+  }
+
+  template<typename Value>
+  void randomize(PRNG& prng, Value& value) const
+  {
+    if (this->get_diagonal())
+    {
+      BaseProof::randomize(prng, value);
+    }
+    else
+    {
+      value.allocate(Polynomial);
+      assert(sparcity.size() == value.num_slots());
+      for (unsigned int i = 0; i < value.num_slots(); i++)
+      {
+        using FD = std::remove_cvref_t<decltype(value.get_field())>;
+        using poly_type = typename FD::poly_type;
+        poly_type x = {};
+        if (not sparcity[i])
+        {
+          prng.randomBnd(bigint::tmp, value.get_field().get_prime(), true);
+          x = bigint::tmp;
+        }
+        value.set_coeff(i, x);
+      }
+    }
+  }
+
+  template<typename Value>
+  void randomize(PRNG& prng, Value& value, int bits) const
+  {
+    if (this->get_diagonal())
+    {
+      BaseProof::randomize(prng, value, bits);
+    }
+    else
+    {
+      value.allocate(Polynomial);
+      assert(sparcity.size() == value.num_slots());
+      for (unsigned int i = 0; i < value.num_slots(); i++)
+      {
+        using FD = std::remove_cvref_t<decltype(value.get_field())>;
+        using poly_type = typename FD::poly_type;
+        poly_type x = {};
+        if (not sparcity[i])
+        {
+          x.generateUniform(prng, bits, false);
+        }
+        value.set_coeff(i, x);
+      }
+    }
+  }
+};
+
+using SparseInteractiveProof = SparseProof<InteractiveProof>;
+using SparseNonInteractiveProof = SparseProof<NonInteractiveProof>;
 
 #endif

@@ -197,8 +197,9 @@ void LowGearKeyGen<L>::run(PairwiseSetup<FD>& setup)
     map<string, Timer> timers;
     MultiEncCommit<FD> EC(P, machine.other_pks, setup.FieldD,
             timers, machine, generator, true);
-    assert(EC.proof.get_diagonal());
-    vector<Plaintext_<FD>> m(EC.proof.U, setup.FieldD);
+    auto& proof = EC.get_proof();
+    assert(proof.get_diagonal());
+    vector<Plaintext_<FD>> m(proof.U, setup.FieldD);
     for (auto& mm : m)
         mm.assign_constant(mac_key);
 
@@ -207,9 +208,9 @@ void LowGearKeyGen<L>::run(PairwiseSetup<FD>& setup)
     EC.generate_proof(C, m, ciphertexts, cleartexts);
 
     AddableVector<Ciphertext> others_ciphertexts;
-    others_ciphertexts.resize(EC.proof.U, machine.pk.get_params());
-    Verifier<FD> verifier(EC.proof, setup.FieldD);
-    verifier.NIZKPoK(others_ciphertexts, ciphertexts,
+    others_ciphertexts.resize(proof.U, machine.pk.get_params());
+    Verifier<FD> verifier(proof, setup.FieldD);
+    verifier.NIZKPoK(proof, others_ciphertexts, ciphertexts,
             cleartexts, machine.pk);
 
     machine.enc_alphas.clear();
@@ -231,7 +232,7 @@ void LowGearKeyGen<L>::run(PairwiseSetup<FD>& setup)
         cerr << "Checking proof of player " << i << endl;
 #endif
         timers["Verifying"].start();
-        verifier.NIZKPoK(others_ciphertexts, ciphertexts,
+        verifier.NIZKPoK(proof, others_ciphertexts, ciphertexts,
                 cleartexts, machine.other_pks[player]);
         timers["Verifying"].stop();
         machine.enc_alphas.at(player) = others_ciphertexts.at(0);

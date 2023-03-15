@@ -34,7 +34,7 @@ public:
   void generate_setup(FHE_Params& params, FD& FTD)
   {
     SPDZ_Data_Setup(params, FTD);
-    params.set(R, {pr0, pr1});
+    params.set(R, FTD.get_prime(), {pr0, pr1});
   }
 
   template<class FD>

@@ -9,8 +9,12 @@
 #include "Math/gfpvar.h"
 #include "Protocols/HemiOptions.h"
 #include "Protocols/config.h"
+#include "Tools/config.h"
 
 #include "Math/gfp.hpp"
+
+#define STRINGIFY(x) #x
+#define STRINGIFY_VALUE(x) STRINGIFY(x)
 
 using namespace std;
 
@@ -250,6 +254,26 @@ OnlineOptions::OnlineOptions(ez::ezOptionParser& opt, int argc,
             "--direct" // Flag token.
     );
 
+    opt.add(
+#if CONV2D_SUMMING_CIPHERTEXTS
+            STRINGIFY_VALUE(CONV2D_EXTRA_SLACK), // Default.
+#else
+            "1", // Default.
+#endif
+            0, // Required?
+            1, // Number of args expected.
+            0, // Delimiter if expecting multiple args. 
+            "Maximum (inner) matrix dimension (default:\n" // Help description.
+#if CONV2D_SUMMING_CIPHERTEXTS
+                STRINGIFY_VALUE(CONV2D_EXTRA_SLACK)
+#else
+                "1"
+#endif
+            ")",
+            "-k", // Flag token.
+            "--matrix-dimension" // Flag token.
+    );
+
     opt.parse(argc, argv);
 
     if (variable_prime_length)
@@ -271,6 +295,7 @@ OnlineOptions::OnlineOptions(ez::ezOptionParser& opt, int argc,
     }
     opt.get("-b")->getInt(batch_size);
     opt.get("--memory")->getString(memtype);
+    opt.get("--matrix-dimension")->getInt(matrix_dimensions);
     bits_from_squares = opt.isSet("-Q");
 
     direct = opt.isSet("--direct");

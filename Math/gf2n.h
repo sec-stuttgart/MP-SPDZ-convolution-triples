@@ -226,6 +226,7 @@ public:
   static gf2n_short cut(int128 x);
 
   gf2n_short() {}
+  gf2n_short(fixint<0> const& other);
   template<class T>
   gf2n_short(const T& other) : super(other) {}
   gf2n_short(const int128& a);

@@ -106,6 +106,8 @@ enum
     MATMULS = 0xAA,
     MATMULSM = 0xAB,
     CONV2DS = 0xAC,
+    VMATMULS = 0xC3,
+    VCONV2DS = 0xC4,
     CHECK = 0xAF,
     PRIVATEOUTPUT = 0xAD,
     // Shuffling

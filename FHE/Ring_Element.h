@@ -59,6 +59,7 @@ class Ring_Element
   const FFT_Data& get_FFTD() const     { return *FFTD; }
   const Zp_Data& get_prD() const   { return (*FFTD).get_prD(); }
   const bigint&  get_prime() const { return (*FFTD).get_prime(); }
+  RepType get_rep() const { return rep; }
 
   void assign_zero();
   void assign_one();
@@ -206,6 +207,9 @@ void Ring_Element::from(const Generator<T>& generator)
     }
   change_rep(t);
 }
+
+void store(octetStream& o,const vector<modp>& v,const Zp_Data& ZpD);
+void get(octetStream& o,vector<modp>& v,const Zp_Data& ZpD);
 
 #endif
 

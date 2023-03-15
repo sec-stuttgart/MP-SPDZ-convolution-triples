@@ -96,7 +96,7 @@ public:
     _Tp*
     allocate(size_t __n, const void* = 0)
     {
-        if (__n > this->max_size())
+        if (__n > std::allocator_traits<aligned_allocator>::max_size(*this))
             std::__throw_bad_alloc();
 
         _Tp* res = 0;

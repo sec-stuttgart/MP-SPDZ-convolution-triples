@@ -112,7 +112,7 @@ class modp_
   modp_ mul(const modp_& other, const Zp_Data& ZpD) const;
 
   friend void Add(modp_& ans,const modp_& x,const modp_& y,const Zp_Data& ZpD)
-    { ZpD.Add(ans.x, x.x, y.x); }
+    { assert(ZpD.get_t() <= L); ZpD.Add(ans.x, x.x, y.x); }
   template<int M> friend void Sub(modp_<M>& ans,const modp_<M>& x,const modp_<M>& y,const Zp_Data& ZpD);
   template<int M> friend void Mul(modp_<M>& ans,const modp_<M>& x,const modp_<M>& y,const Zp_Data& ZpD);
   template<int M> friend void Sqr(modp_<M>& ans,const modp_<M>& x,const Zp_Data& ZpD);
@@ -161,6 +161,7 @@ void assignZero(modp_<L>& x,const Zp_Data& ZpD)
 template<int L>
 inline void Sub(modp_<L>& ans,const modp_<L>& x,const modp_<L>& y,const Zp_Data& ZpD)
 {
+  assert(ZpD.get_t() <= L);
   ZpD.Sub(ans.x, x.x, y.x);
 }
 

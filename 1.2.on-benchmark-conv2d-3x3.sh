@@ -1,0 +1,6 @@
+./Scripts/benchmark.py 56 64 3 3 --parties 2 --output_folder "$MP_SPDZ_BENCHMARKS/benchmarks-3x3-2on-c3$BENCHMARK_DELAY" --approaches "[('base','online'),('conv2d','online'),('matmul','online')]" --repeats 2
+./Scripts/benchmark.py 28 128 4 3 --parties 2 --output_folder "$MP_SPDZ_BENCHMARKS/benchmarks-3x3-2on-c4$BENCHMARK_DELAY" --approaches "[('base','online'),('conv2d','online'),('matmul','online')]" --repeats 2
+./Scripts/benchmark.py 14 256 6 3 --zip_sizes_and_depths True --parties 2 --output_folder "$MP_SPDZ_BENCHMARKS/benchmarks-3x3-2on-c6$BENCHMARK_DELAY" --approaches "[('base','online'),('conv2d','online'),('matmul','online')]" --repeats 2
+./Scripts/benchmark.py 56 64 3 3 --parties 4 --output_folder "$MP_SPDZ_BENCHMARKS/benchmarks-3x3-4on-c3$BENCHMARK_DELAY" --approaches "[('base','online'),('conv2d','online'),('matmul','online')]" --repeats 2
+./Scripts/benchmark.py 28 128 4 3 --parties 4 --output_folder "$MP_SPDZ_BENCHMARKS/benchmarks-3x3-4on-c4$BENCHMARK_DELAY" --approaches "[('base','online'),('conv2d','online'),('matmul','online')]" --repeats 2
+./Scripts/benchmark.py 14 256 6 3 --zip_sizes_and_depths True --parties 4 --output_folder "$MP_SPDZ_BENCHMARKS/benchmarks-3x3-4on-c6$BENCHMARK_DELAY" --approaches "[('base','online'),('conv2d','online'),('matmul','online')]" --repeats 2

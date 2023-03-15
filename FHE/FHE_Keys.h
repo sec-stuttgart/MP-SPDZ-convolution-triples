@@ -7,6 +7,7 @@
 #include "FHE/FHE_Params.h"
 #include "FHE/Random_Coins.h"
 #include "FHE/Ciphertext.h"
+#include "FHE/ExpandedCiphertext.h"
 #include "FHE/Plaintext.h"
 
 class FHE_PK;
@@ -19,6 +20,9 @@ class Ciphertext;
 class FHE_SK
 {
   Rq_Element sk;
+#ifdef CONV2D_LOWGEAR_EXPANDED_BGV
+  Ring_Element poly_sk;
+#endif
   const FHE_Params *params;
   bigint pr;
 
@@ -31,12 +35,27 @@ class FHE_SK
   bigint p() const { return pr; }
 
   // secret key always on lower level
-  void assign(const Rq_Element& s) { sk=s; sk.lower_level(); }
+  void assign(const Rq_Element& s)
+  {
+    sk=s;
+    sk.lower_level();
+#ifdef CONV2D_LOWGEAR_EXPANDED_BGV
+    poly_sk = sk.get(0);
+    poly_sk.change_rep(polynomial);
+#endif
+  }
 
   FHE_SK(const FHE_Params& pms);
 
   FHE_SK(const FHE_Params& pms, const bigint& p)
-    : sk(pms.FFTD(),evaluation,evaluation) { params=&pms; pr=p; }
+    : sk(pms.FFTD(),evaluation,evaluation)
+#ifdef CONV2D_LOWGEAR_EXPANDED_BGV
+    , poly_sk(pms.FFTD()[0], polynomial)
+#endif
+    {
+      params = &pms;
+      pr = p;
+    }
 
   FHE_SK(const FHE_PK& pk);
 
@@ -48,13 +67,24 @@ class FHE_SK
   void pack(octetStream& os) const { sk.pack(os); pr.pack(os); }
 
   /// Read from buffer. Assumes parameters are set correctly
-  void unpack(octetStream& os)     { sk.unpack(os, *params); pr.unpack(os); }
+  void unpack(octetStream& os)
+  {
+    sk.unpack(os, *params);
+#ifdef CONV2D_LOWGEAR_EXPANDED_BGV
+    poly_sk = sk.get(0);
+    poly_sk.change_rep(polynomial);
+#endif
+    pr.unpack(os);
+  }
 
   // Assumes Ring and prime of mess have already been set correctly
   // Ciphertext c must be at level 0 or an error occurs
   //            c must have same params as SK
   template<class T, class FD, class S>
   void decrypt(Plaintext<T, FD, S>& mess,const Ciphertext& c) const;
+
+  template<class T, class FD, class S>
+  void decrypt(Plaintext<T, FD, S>& mess, ExpandedCiphertext const& c) const;
 
   template <class FD>
   Plaintext<typename FD::T, FD, typename FD::S> decrypt(const Ciphertext& c, const FD& FieldD);

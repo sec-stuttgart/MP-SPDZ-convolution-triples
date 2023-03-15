@@ -127,16 +127,16 @@ CFLAGS += -fPIC
 LDLIBS += -Wl,-rpath -Wl,$(CURDIR)
 
 $(SHAREDLIB): $(PROCESSOR) $(COMMONOBJS) GC/square64.o GC/Instruction.o
-	$(CXX) $(CFLAGS) -shared -o $@ $^ $(LDLIBS)
+	$(CXX) $(CFLAGS) -shared -o $@ $^ $(LDLIBS) $(EXTRA_LDLIBS)
 
 $(FHEOFFLINE): $(FHEOBJS) $(SHAREDLIB)
-	$(CXX) $(CFLAGS) -shared -o $@ $^ $(LDLIBS)
+	$(CXX) $(CFLAGS) -shared -o $@ $^ $(LDLIBS) $(EXTRA_LDLIBS)
 
 static/%.x: Machines/%.o $(LIBRELEASE) $(LIBSIMPLEOT)
-	$(CXX) $(CFLAGS) -o $@ $^ -Wl,-Map=$<.map -Wl,-Bstatic -static-libgcc -static-libstdc++  $(LIBRELEASE) $(LIBSIMPLEOT) $(BOOST) $(LDLIBS) -Wl,-Bdynamic -ldl
+	$(CXX) $(CFLAGS) -o $@ $^ -Wl,-Map=$<.map -Wl,-Bstatic -static-libgcc -static-libstdc++ $(LIBRELEASE) $(LIBSIMPLEOT) $(BOOST) $(LDLIBS) -Wl,-Bdynamic -ldl $(EXTRA_LDLIBS)
 
 static/%.x: ECDSA/%.o ECDSA/P256Element.o $(VMOBJS) $(OT) $(LIBSIMPLEOT)
-	$(CXX) $(CFLAGS) -o $@ $^ -Wl,-Map=$<.map -Wl,-Bstatic -static-libgcc -static-libstdc++ $(BOOST) $(LDLIBS) -Wl,-Bdynamic -ldl
+	$(CXX) $(CFLAGS) -o $@ $^ -Wl,-Map=$<.map -Wl,-Bstatic -static-libgcc -static-libstdc++ $(BOOST) $(LDLIBS) -Wl,-Bdynamic -ldl $(EXTRA_LDLIBS)
 
 static-dir:
 	@ mkdir static 2> /dev/null; true
@@ -144,26 +144,26 @@ static-dir:
 static-release: static-dir $(patsubst Machines/%.cpp, static/%.x, $(wildcard Machines/*-party.cpp)) static/emulate.x
 
 Fake-ECDSA.x: ECDSA/Fake-ECDSA.cpp ECDSA/P256Element.o $(COMMON) Processor/PrepBase.o
-	$(CXX) -o $@ $^ $(CFLAGS) $(LDLIBS)
+	$(CXX) -o $@ $^ $(CFLAGS) $(LDLIBS) $(EXTRA_LDLIBS)
 
 ot.x: $(OT) $(COMMON) Machines/OText_main.o Machines/OTMachine.o $(LIBSIMPLEOT)
-	$(CXX) $(CFLAGS) -o $@ $^ $(LDLIBS)
+	$(CXX) $(CFLAGS) -o $@ $^ $(LDLIBS) $(EXTRA_LDLIBS)
 
 ot-offline.x: $(OT) $(LIBSIMPLEOT) Machines/TripleMachine.o
 
 gc-emulate.x: $(VM) GC/FakeSecret.o GC/square64.o
 
 bmr-%.x: $(BMR) $(VM) Machines/bmr-%.cpp $(LIBSIMPLEOT)
-	$(CXX) -o $@ $(CFLAGS) $^ $(BOOST) $(LDLIBS)
+	$(CXX) -o $@ $(CFLAGS) $^ $(BOOST) $(LDLIBS) $(EXTRA_LDLIBS)
 
 %-bmr-party.x: Machines/%-bmr-party.o $(BMR) $(SHAREDLIB) $(MINI_OT)
-	$(CXX) -o $@ $(CFLAGS) $^ $(BOOST) $(LDLIBS)
+	$(CXX) -o $@ $(CFLAGS) $^ $(BOOST) $(LDLIBS) $(EXTRA_LDLIBS)
 
 bmr-clean:
 	-rm BMR/*.o BMR/*/*.o GC/*.o
 
 bankers-bonus-client.x: ExternalIO/bankers-bonus-client.o $(COMMON)
-	$(CXX) $(CFLAGS) -o $@ $^ $(LDLIBS)
+	$(CXX) $(CFLAGS) -o $@ $^ $(LDLIBS) $(EXTRA_LDLIBS)
 
 simple-offline.x: $(FHEOFFLINE)
 pairwise-offline.x: $(FHEOFFLINE)
@@ -177,25 +177,28 @@ yao-clean:
 	-rm Yao/*.o
 
 galois-degree.x: Utils/galois-degree.o
-	$(CXX) $(CFLAGS) -o $@ $^ $(LDLIBS)
+	$(CXX) $(CFLAGS) -o $@ $^ $(LDLIBS) $(EXTRA_LDLIBS)
 
 default-prime-length.x: Utils/default-prime-length.o
-	$(CXX) $(CFLAGS) -o $@ $^ $(LDLIBS)
+	$(CXX) $(CFLAGS) -o $@ $^ $(LDLIBS) $(EXTRA_LDLIBS)
 
 secure.x: Utils/secure.o
 	$(CXX) -o $@ $(CFLAGS) $^
 
 Fake-Offline.x: Utils/Fake-Offline.o $(VM)
-	$(CXX) -o $@ $(CFLAGS) $^ $(LDLIBS)
+	$(CXX) -o $@ $(CFLAGS) $^ $(LDLIBS) $(EXTRA_LDLIBS)
+
+static/Fake-Offline.x: Utils/Fake-Offline.o $(LIBRELEASE) $(LIBSIMPLEOT)
+	$(CXX) $(CFLAGS) -o $@ $^ -Wl,-Map=$<.map -Wl,-Bstatic -static-libgcc -static-libstdc++ $(LIBRELEASE) $(LIBSIMPLEOT) $(BOOST) $(LDLIBS) -Wl,-Bdynamic -ldl $(EXTRA_LDLIBS)
 
 %.x: Utils/%.o $(COMMON)
-	$(CXX) -o $@ $(CFLAGS) $^ $(LDLIBS)
+	$(CXX) -o $@ $(CFLAGS) $^ $(LDLIBS) $(EXTRA_LDLIBS)
 
 %.x: Machines/%.o $(MINI_OT) $(SHAREDLIB)
-	$(CXX) -o $@ $(CFLAGS) $^ $(LDLIBS)
+	$(CXX) -o $@ $(CFLAGS) $^ $(LDLIBS) $(EXTRA_LDLIBS)
 
 %-ecdsa-party.x: ECDSA/%-ecdsa-party.o ECDSA/P256Element.o $(VM)
-	$(CXX) -o $@ $(CFLAGS) $^ $(LDLIBS)
+	$(CXX) -o $@ $(CFLAGS) $^ $(LDLIBS) $(EXTRA_LDLIBS)
 
 replicated-bin-party.x: GC/square64.o
 replicated-ring-party.x: GC/square64.o
@@ -213,21 +216,22 @@ semi2k-party.x: $(OT) GC/SemiPrep.o GC/square64.o
 hemi-party.x: $(FHEOFFLINE) $(GC_SEMI) $(OT)
 temi-party.x: $(FHEOFFLINE) $(GC_SEMI) $(OT)
 soho-party.x: $(FHEOFFLINE) $(GC_SEMI) $(OT)
-cowgear-party.x: $(FHEOFFLINE) Protocols/CowGearOptions.o $(TINIER)
-chaigear-party.x: $(FHEOFFLINE) Protocols/CowGearOptions.o $(TINIER)
-lowgear-party.x: $(FHEOFFLINE) $(TINIER) Protocols/CowGearOptions.o Protocols/LowGearKeyGen.o
-highgear-party.x: $(FHEOFFLINE) $(TINIER) Protocols/CowGearOptions.o Protocols/HighGearKeyGen.o
+cowgear-party.x: $(FHEOFFLINE) $(TINIER)
+chaigear-party.x: $(FHEOFFLINE) $(TINIER)
+lowgear-party.x: $(FHEOFFLINE) $(TINIER) Protocols/LowGearKeyGen.o
+highgear-party.x: $(FHEOFFLINE) $(TINIER) Protocols/HighGearKeyGen.o
 atlas-party.x: GC/AtlasSecret.o
 static/hemi-party.x: $(FHEOBJS)
 static/temi-party.x: $(FHEOBJS)
 static/soho-party.x: $(FHEOBJS)
 static/cowgear-party.x: $(FHEOBJS)
 static/chaigear-party.x: $(FHEOBJS)
-static/lowgear-party.x: $(FHEOBJS) Protocols/CowGearOptions.o Protocols/LowGearKeyGen.o
-static/highgear-party.x: $(FHEOBJS) Protocols/CowGearOptions.o Protocols/HighGearKeyGen.o
+static/lowgear-party.x: $(FHEOBJS) Protocols/LowGearKeyGen.o
+static/highgear-party.x: $(FHEOBJS) Protocols/HighGearKeyGen.o
 mascot-party.x: $(SPDZ)
 static/mascot-party.x: $(SPDZ)
 Player-Online.x: $(SPDZ)
+static/Player-Online.x: $(SPDZ)
 mama-party.x: $(TINIER)
 ps-rep-ring-party.x: Protocols/MalRepRingOptions.o
 malicious-rep-ring-party.x: Protocols/MalRepRingOptions.o
@@ -312,4 +316,7 @@ simde/simde:
 	git submodule update --init simde || git clone https://github.com/simd-everywhere/simde
 
 clean:
-	-rm -f */*.o *.o */*.d *.d *.x core.* *.a gmon.out */*/*.o static/*.x *.so
+	-rm -f */*.o *.o */*.o.map */*.d *.d *.x core.* *.a gmon.out */*/*.o static/*.x *.so
+
+clean-non-x:
+	-rm -f */*.o *.o */*.o.map */*.d *.d core.* *.a gmon.out */*/*.o static/*.x *.so

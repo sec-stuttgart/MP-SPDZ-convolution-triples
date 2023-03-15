@@ -8,6 +8,8 @@
 #include "FHEOffline/EncCommit.h"
 #include "Math/Z2k.hpp"
 
+#include "Tools/config.h"
+
 double Proof::dist = 0;
 
 bigint Proof::slack(int slack, int sec, int phim)

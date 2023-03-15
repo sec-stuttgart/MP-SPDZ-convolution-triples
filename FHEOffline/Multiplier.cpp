@@ -26,6 +26,9 @@ Multiplier<FD>::Multiplier(int offset, PairwiseMachine& machine, Player& P,
     other_enc_alpha(machine.enc_alphas[(my_num + num_players - offset) % num_players]),
     timers(timers),
     C(machine.pk), mask(machine.pk),
+#ifdef CONV2D_LOWGEAR_EXPANDED_BGV
+    xC(machine.pk.get_params()), xMask(machine.pk.get_params()),
+#endif
     product_share(machine.setup<FD>().FieldD), rc(machine.pk),
     volatile_capacity(0)
 {
@@ -98,6 +101,88 @@ void Multiplier<FD>::add(Plaintext_<FD>& res, const Ciphertext& c,
     memory_usage.update("product shares", product_share.report_size(CAPACITY));
     memory_usage.update("masking random coins", rc.report_size(CAPACITY));
 }
+
+#ifdef CONV2D_LOWGEAR_EXPANDED_BGV
+template <class FD>
+void Multiplier<FD>::conv_and_add(Plaintext_<FD>& res, Ciphertext const& enc_a, MultiConvolution_Matrix const& b, OT_ROLE role)
+{
+    if (role & SENDER)
+    {
+        timers["Ciphertext convolution"].start();
+#ifdef VERBOSE_CONV2D
+        std::cout << CONV2D_NOW << " start: ciphertext convolution" << std::endl;
+        b.mul(xC, enc_a);
+        std::cout << CONV2D_NOW << " end:   ciphertext convolution" << std::endl;
+#else
+        b.mul(xC, enc_a);
+#endif
+        timers["Ciphertext convolution"].stop();
+    }
+
+    add(res, xC, role);
+}
+
+template <class FD>
+void Multiplier<FD>::add(Plaintext_<FD>& res, ExpandedCiphertext const& c, OT_ROLE role)
+{
+    o.reset_write_head();
+
+    if (role & SENDER)
+    {
+        PRNG G;
+        G.ReSeed();
+        timers["Mask randomization"].start();
+        product_share.randomize(G);
+        xMask = c;
+#ifdef VERBOSE_CONV2D
+        std::cout << CONV2D_NOW << " start: ciphertext rerandomization" << std::endl;
+        xMask.rerandomize(other_pk);
+        std::cout << CONV2D_NOW << " end:   ciphertext rerandomization" << std::endl;
+#else
+        xMask.rerandomize(other_pk);
+#endif
+        timers["Mask randomization"].stop();
+        xMask += product_share;
+        xMask.pack(o);
+        res -= product_share;
+    }
+
+#ifdef VERBOSE_CONV2D
+    std::cout << CONV2D_NOW << " start: ciphertext sending" << std::endl;
+#endif
+    timers["Convolved ciphertext sending"].start();
+    if (role == BOTH)
+        P.reverse_exchange(o);
+    else if (role == SENDER)
+        P.reverse_send(o);
+    else if (role == RECEIVER)
+        P.receive(o);
+    timers["Convolved ciphertext sending"].stop();
+#ifdef VERBOSE_CONV2D
+    std::cout << CONV2D_NOW << " end:   ciphertext sending" << std::endl;
+#endif
+
+    if (role & RECEIVER)
+    {
+        timers["Decryption"].start();
+        xC.unpack(o);
+#ifdef VERBOSE_CONV2D
+        std::cout << CONV2D_NOW << " start: ciphertext decryption" << std::endl;
+        machine.sk.decrypt(product_share, xC);
+        std::cout << CONV2D_NOW << " end:   ciphertext decryption" << std::endl;
+#else
+        machine.sk.decrypt(product_share, xC);
+#endif
+        res += product_share;
+        timers["Decryption"].stop();
+    }
+
+    memory_usage.update("convolved ciphertext", xC.report_size(CAPACITY));
+    memory_usage.update("extended mask ciphertext", xMask.report_size(CAPACITY));
+    memory_usage.update("product shares", product_share.report_size(CAPACITY));
+    memory_usage.update("masking random coins", rc.report_size(CAPACITY));
+}
+#endif
 
 template <class FD>
 void Multiplier<FD>::multiply_alpha_and_add(Plaintext_<FD>& res,

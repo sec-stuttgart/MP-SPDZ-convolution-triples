@@ -172,3 +172,58 @@ void CowGearPrep<T>::buffer_bits(true_type)
     for (auto& bit : this->bits)
         bit.force_to_bit();
 }
+
+template<class T>
+void CowGearPrep<T>::buffer_matmul_triples(matmul_dimensions dimensions)
+{
+    auto& machine = *pairwise_machine;
+    auto& generator = get_generator();
+    auto& setup = machine.setup<FD>();
+
+    auto dummy_pk = FHE_PK(setup.params);
+    auto dummy_calpha = Ciphertext(setup.params);
+    auto dummy_dd = SimpleDistDecrypt<FD>(this->proc->P, {});
+    MAC_Check<typename FD::T> MC(this->proc->MC.get_alphai());
+
+    if (not matmul_producer)
+        matmul_producer = std::make_unique<PairwiseMatmulTripleProducer<FD>>(generator, this->proc->P.my_num());
+    matmul_producer->produce(dimensions, this->proc->P, MC, dummy_pk, dummy_calpha, generator.EC, dummy_dd, setup.alphai);
+    matmul_producer->transfer_triples(this->matmul_triples[dimensions]);
+}
+
+
+template<class T>
+void CowGearPrep<T>::buffer_conv2d_triples(convolution_dimensions dimensions)
+{
+    auto& machine = *pairwise_machine;
+    auto& generator = get_generator();
+    auto& setup = machine.setup<FD>();
+
+    auto dummy_pk = FHE_PK(setup.params);
+    auto dummy_calpha = Ciphertext(setup.params);
+    auto dummy_dd = SimpleDistDecrypt<FD>(this->proc->P, {});
+    MAC_Check<typename FD::T> MC(this->proc->MC.get_alphai());
+
+    if (not conv2d_producer)
+        conv2d_producer = std::make_unique<PairwiseConv2dTripleProducer<FD>>(generator, this->proc->P.my_num());
+    conv2d_producer->produce(dimensions, this->proc->P, MC, dummy_pk, dummy_calpha, generator.EC, dummy_dd, setup.alphai);
+    conv2d_producer->transfer_triples(this->convolution_triples[dimensions]);
+}
+
+template<class T>
+void CowGearPrep<T>::buffer_conv2d_triples(depthwise_convolution_triple_dimensions dimensions)
+{
+    auto& machine = *pairwise_machine;
+    auto& generator = get_generator();
+    auto& setup = machine.setup<FD>();
+
+    auto dummy_pk = FHE_PK(setup.params);
+    auto dummy_calpha = Ciphertext(setup.params);
+    auto dummy_dd = SimpleDistDecrypt<FD>(this->proc->P, {});
+    MAC_Check<typename FD::T> MC(this->proc->MC.get_alphai());
+
+    if (not conv2d_producer)
+        conv2d_producer = std::make_unique<PairwiseConv2dTripleProducer<FD>>(generator, this->proc->P.my_num());
+    conv2d_producer->produce(dimensions, this->proc->P, MC, dummy_pk, dummy_calpha, generator.EC, dummy_dd, setup.alphai);
+    conv2d_producer->transfer_triples(this->depthwise_convolution_triples[dimensions]);
+}
