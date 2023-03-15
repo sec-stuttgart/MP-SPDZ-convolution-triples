@@ -31,7 +31,7 @@ For academic purposes, please cite our paper:
     }
 
 We will update this as soon as a DOI is available.
-An [eprint](https://eprint.iacr.org/) will be available soon, as well.
+An [eprint](https://eprint.iacr.org/) version will be available soon, as well.
 
 ## Build
 
@@ -110,3 +110,10 @@ For depthwise convolutions, use `Scrips/depthwise-conv2-matmul.py` like
     python3 Scripts/depthwise-conv2-matmul.py 7 7 512
 
 to compute the number of matrix multiplications needed for a depthwise convolution of a 7x7 image with depth 512.
+
+## Acknowledgments
+
+Marc Rivinius, Pascal Reisert, and Ralf Küsters were supported by the [CRYPTECS project](https://www.cryptecs.eu/).
+The CRYPTECS project has received funding from the German Federal Ministry of Education and Research under Grant Agreement No. 16KIS1441 and from the French National Research Agency under Grant Agreement No. ANR-20-CYAL-0006.
+Sebastian Hasler was supported by Advantest as part of the [Graduate School "Intelligent Methods for Test and Reliability" (GS-IMTR)](https://www.gs-imtr.uni-stuttgart.de/) at the University of Stuttgart.
+The authors also acknowledge support by the state of Baden-Württemberg through [bwHPC](https://www.bwhpc.de/).
