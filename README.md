@@ -16,7 +16,7 @@ Therefore, we include multiple benchmarks and an automated way to run them.
 
 ## Paper
 
-For academic purposes, please cite our paper:
+For academic purposes, please [cite our paper](CITATION.bib):
 
     @article{RiviniusReisertHaslerKuesters-POPETS-2023,
         author    = {Marc Rivinius and Pascal Reisert and Sebastian
@@ -31,7 +31,7 @@ For academic purposes, please cite our paper:
     }
 
 We will update this as soon as a DOI is available.
-An [eprint](https://eprint.iacr.org/) version will be available soon, as well.
+A full version of our paper is [available online](https://eprint.iacr.org/2023/359).
 
 ## Build
 
