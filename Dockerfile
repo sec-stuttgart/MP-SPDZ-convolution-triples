@@ -66,6 +66,8 @@ RUN pip install --upgrade pip ipython
 
 ARG mp_spdz_home="/usr/src/MP-SPDZ"
 ENV MP_SPDZ_HOME ${mp_spdz_home}
+ARG mp_spdz_benchmarks="${mp_spdz_home}/benchmarks"
+ENV MP_SPDZ_BENCHMARKS ${mp_spdz_benchmarks}
 WORKDIR ${MP_SPDZ_HOME}
 
 COPY --from=build-benchmarks ${MP_SPDZ_HOME} .
