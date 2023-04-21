@@ -1,5 +1,10 @@
+## to download Resnet50
+FROM curlimages/curl:8.00.1 AS downloader
+WORKDIR /usr/src
+RUN curl -L -O https://github.com/onnx/models/raw/e49c41dbddaac1a408d935b933b89360182f5b93/vision/classification/resnet/model/resnet50-v1-7.onnx
+
 ## requirements to build MP-SPDZ
-FROM ubuntu:22.04 as buildenv
+FROM ubuntu:22.04 AS buildenv
 
 RUN apt-get update && export DEBIAN_FRONTEND=noninteractive && apt-get install -y --no-install-recommends \
                 automake \
@@ -42,7 +47,7 @@ RUN pip install -r requirements.txt
 
 
 ## building the executables
-FROM buildenv as build-benchmarks
+FROM buildenv AS build-benchmarks
 
 ARG mp_spdz_benchmarks="${mp_spdz_home}/benchmarks"
 ENV MP_SPDZ_BENCHMARKS ${mp_spdz_benchmarks}
@@ -52,7 +57,7 @@ RUN python3 build.py
 
 
 ## copy over the executables in a container without the build requirements
-FROM ubuntu:22.04 as benchmarks
+FROM ubuntu:22.04 AS benchmarks
 
 LABEL org.opencontainers.image.source=https://github.com/sec-stuttgart/MP-SPDZ-convolution-triples
 
@@ -71,6 +76,7 @@ ENV MP_SPDZ_BENCHMARKS ${mp_spdz_benchmarks}
 WORKDIR ${MP_SPDZ_HOME}
 
 COPY --from=build-benchmarks ${MP_SPDZ_HOME} .
+COPY --from=downloader /usr/src/resnet50-v1-7.onnx ./resnet50-v1-7.onnx
 
 RUN rm -r logs \
  && rm -r Compiler/__pycache__ \

@@ -56,7 +56,7 @@ The easiest way to replicate our results is to simply run all benchmarks with th
 
 Alternatively, you can start the docker container interactively with
 
-    sudo docker run -it --rm --cap-add=NET_ADMIN --mount type=bind,source="$(pwd)/benchmarks",target=/usr/src/MP-SPDZ/benchmarks mpspdz:convolutions bash
+    sudo docker run -it --rm --cap-add=NET_ADMIN --mount type=bind,source="$(pwd)/benchmarks",target=/usr/src/MP-SPDZ/benchmarks mpspdz:convolutions /bin/bash
 
 and run individual benchmarks.
 For this, make sure to emulate the network settings from our paper to get comparable results, i.e., for the LAN setup:
@@ -85,6 +85,7 @@ The partial scripts follow the naming convention `1.<part>.<protocol>-benchmark-
 Like this, you can run multiple separate benchmarks at once to reduce the overall time it takes to complete all experiments.
 Make sure to emulate a network setting whenever you start the containers like this and also make sure to have enough resources (CPU cores and RAM) so concurrent experiments don't influence the performance of each other.
 We used 4 cores for 2-party experiments (LowGear and some of the online experiments) and 8 cores for 4-party experiments (HighGear and the rest of the online experiments).
+We estimate that more than 20 GB RAM are required to run the largest LowGear benchmarks and more than 30 GB for HighGear benchmarks.
 
 ### Benchmark Results
 
@@ -103,13 +104,20 @@ Use it, for example, like
 
     python3 Scripts/conv2-matmul.py resnet50-v1-7.onnx --summary
 
-after downloading the corresponding [model](https://github.com/onnx/models/blob/main/vision/classification/resnet/model/resnet50-v1-7.onnx) in `.onnx` format.
+after downloading the corresponding [model](https://github.com/onnx/models/blob/main/vision/classification/resnet/model/resnet50-v1-7.onnx) in `.onnx` format (already downloaded in the benchmark container).
 
 For depthwise convolutions, use `Scrips/depthwise-conv2-matmul.py` like
 
     python3 Scripts/depthwise-conv2-matmul.py 7 7 512
 
 to compute the number of matrix multiplications needed for a depthwise convolution of a 7x7 image with depth 512.
+
+Note that, if you want to run these scripts outside of the container, you should make sure to have the [required Python packages](requirements.txt) installed.
+Alternatively, you can open a terminal in same container as for the benchmarks
+
+    sudo docker run --rm -it mpspdz:convolutions /bin/bash
+
+and run the above scripts there.
 
 ## Acknowledgments
 

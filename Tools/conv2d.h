@@ -157,7 +157,7 @@ struct depthwise_convolution_dimensions
   auto image_size() const { return image_batch * image_height * image_width * image_depth; }
   auto filter_size() const { return filter_height * filter_width * image_depth; }
   auto output_size(int height, int width) const { return image_batch * height * width * image_depth; }
-  auto full_output_size() const { return output_size(full_output_width(), full_output_width()); }
+  auto full_output_size() const { return output_size(full_output_height(), full_output_width()); }
 
   explicit operator depthwise_convolution_triple_dimensions() const
   {
@@ -199,7 +199,7 @@ struct convolution_dimensions : private depthwise_convolution_dimensions
   using depthwise_convolution_dimensions::image_size;
   auto filter_size() const { return output_depth * filter_height * filter_width * image_depth; }
   auto output_size(int height, int width) const { return image_batch * height * width * output_depth; }
-  auto full_output_size() const { return output_size(full_output_width(), full_output_width()); }
+  auto full_output_size() const { return output_size(full_output_height(), full_output_width()); }
 
   std::vector<int> image_sparcity(int N) const;
   std::vector<int> filter_sparcity(int N) const;
