@@ -2618,6 +2618,10 @@ class vconv2ds(base.VarArgsInstruction, base.DataInstruction):
         "sw", # output
         "s", # image
         "s", # filter
+        "int", # padding y
+        "int", # padding x
+        "int", # stride y
+        "int", # stride x
         "int", # image batch
         "int", # image height
         "int", # image width
@@ -2627,10 +2631,6 @@ class vconv2ds(base.VarArgsInstruction, base.DataInstruction):
         "int", # output height
         "int", # output width
         "int", # output depth
-        "int", # padding y
-        "int", # padding x
-        "int", # stride y
-        "int", # stride x
         ])
 
     def to_args(self, convolutions):

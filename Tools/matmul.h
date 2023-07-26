@@ -9,9 +9,9 @@
 
 struct matmul_desc
 {
+    int result_address;
     int left_address;
     int right_address;
-    int result_address;
     int left_outer_dimension;
     int inner_dimension;
     int right_outer_dimension;
